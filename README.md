@@ -41,6 +41,16 @@ pnpm dev
 
 `pnpm db:up` starts only PostgreSQL. `pnpm db:down` stops only PostgreSQL.
 
+## Helpful VS Code extensions
+
+VS Code suggests these extensions when you open the project folder. They are optional, but can make day-to-day work easier:
+
+- **Svelte for VS Code** (`svelte.svelte-vscode`): Svelte syntax support and diagnostics.
+- **Tailwind CSS IntelliSense** (`bradlc.vscode-tailwindcss`): class name suggestions and previews.
+- **Prisma** (`Prisma.prisma`): syntax support for the database schema.
+- **Prettier - Code formatter** (`esbenp.prettier-vscode`): format project files consistently.
+- **ESLint** (`dbaeumer.vscode-eslint`): show lint issues while editing.
+
 ## Useful commands
 
 Run the `pnpm` commands directly when developing without the app container. If the app runs in Docker, run them inside it instead (for example, `docker compose exec app pnpm check`).
