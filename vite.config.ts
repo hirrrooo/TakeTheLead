@@ -4,12 +4,6 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-	server: {
-		watch: {
-			usePolling: process.env.DOCKER_DEV === '1',
-			interval: 200
-		}
-	},
 	plugins: [
 		tailwindcss(),
 		sveltekit({
