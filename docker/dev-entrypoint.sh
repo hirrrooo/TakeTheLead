@@ -1,8 +1,10 @@
 #!/bin/sh
 set -eu
 
-pnpm install --frozen-lockfile
-pnpm db:push
-pnpm db:generate
+export CI=true
 
-exec pnpm dev --host 0.0.0.0
+pnpm --config.store-dir=/pnpm/store install --frozen-lockfile
+pnpm --config.store-dir=/pnpm/store db:push
+pnpm --config.store-dir=/pnpm/store db:generate
+
+exec pnpm --config.store-dir=/pnpm/store dev --host 0.0.0.0

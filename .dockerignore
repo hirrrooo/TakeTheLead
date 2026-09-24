@@ -5,7 +5,10 @@
 .env
 .env.*
 node_modules
+.pnpm-store
 .svelte-kit
+prisma/*.db*
+src/generated/prisma
 build
 dist
 coverage

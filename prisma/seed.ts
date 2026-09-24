@@ -1,16 +1,9 @@
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
-import 'dotenv/config';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import { PrismaClient } from '../src/generated/prisma/client';
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-	throw new Error('DATABASE_URL environment variable is not defined');
-}
-
-const pool = new pg.Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({
+	adapter: new PrismaBetterSqlite3({ url: 'file:./prisma/dev.db' })
+});
 
 async function main() {
 	console.log('Database seed script ready.');
@@ -24,5 +17,4 @@ main()
 	})
 	.finally(async () => {
 		await prisma.$disconnect();
-		await pool.end();
 	});
