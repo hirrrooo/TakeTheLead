@@ -4,6 +4,12 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+	server: {
+		host: true,
+		allowedHosts: [
+			"5173--main--411test--hbasil.coder.cs.odu.edu",
+		],
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit({
