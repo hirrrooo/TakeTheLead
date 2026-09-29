@@ -4,19 +4,18 @@ A nonprofit web app that helps pet owners cover urgent vet bills with 30-day fun
 
 ## Develop locally
 
-Install [Node.js 24](https://nodejs.org/en/download), then run:
+Install [Node.js 24](https://nodejs.org/en/download), which includes npm, then run:
 
 ```bash
-npm install -g pnpm@11.6.0
-pnpm install
-pnpm db:push
-pnpm db:generate
-pnpm dev
+npm ci
+npm run db:push
+npm run db:generate
+npm run dev
 ```
 
-Open [the brand guidelines](http://localhost:5173/branding). The root page is intentionally blank. Changes in `src/` or `static/` reload automatically. If port 5173 is in use, run `pnpm dev --port 5174` and open that port instead.
+Open [the brand guidelines](http://localhost:5173/branding). The root page is intentionally blank. Changes in `src/` or `static/` reload automatically. If port 5173 is in use, run `npm run dev -- --port 5174` and open that port instead.
 
-Each checkout has its own SQLite database at `prisma/dev.db`. Git ignores the file, so teammates do not share local data. After changing `prisma/schema.prisma`, run `pnpm db:push` and `pnpm db:generate` again.
+Each checkout has its own SQLite database at `prisma/dev.db`. Git ignores the file, so teammates do not share local data. After changing `prisma/schema.prisma`, run `npm run db:push` and `npm run db:generate` again.
 
 ## Production database
 
@@ -40,12 +39,12 @@ Running the local setup above also gives VS Code access to project dependencies,
 
 ## Useful commands
 
-| Command          | Action                      |
-| ---------------- | --------------------------- |
-| `pnpm check`     | Check Svelte and TypeScript |
-| `pnpm lint`      | Check formatting and lint   |
-| `pnpm build`     | Build the app               |
-| `pnpm db:seed`   | Run the seed script         |
-| `pnpm db:studio` | Browse the local database   |
+| Command             | Action                      |
+| ------------------- | --------------------------- |
+| `npm run check`     | Check Svelte and TypeScript |
+| `npm run lint`      | Check formatting and lint   |
+| `npm run build`     | Build the app               |
+| `npm run db:seed`   | Run the seed script         |
+| `npm run db:studio` | Browse the local database   |
 
 Pull requests run the database setup, check, lint, and build commands automatically.
