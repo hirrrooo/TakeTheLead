@@ -47,7 +47,7 @@
 
 <header class="hero">
 	<div class="brand-card">
-		<img src="/brand-mark.svg" alt="Take the Lead" width="90" height="112" />
+		<img src="/ttl-logo.svg" alt="Take the Lead logo" width="118" height="136" />
 	</div>
 	<h1>Brand Guidelines</h1>
 	<p>Take the Lead – Pet Fundraising</p>
@@ -146,8 +146,8 @@
 	}
 
 	.brand-card {
-		width: 90px;
-		height: 112px;
+		width: 100px;
+		height: 115px;
 		margin-inline: auto;
 		background: #fff;
 		box-shadow: 0 3px 8px rgb(51 61 41 / 13%);
@@ -157,6 +157,7 @@
 		display: block;
 		width: 100%;
 		height: 100%;
+		object-fit: contain;
 	}
 
 	.hero h1 {
