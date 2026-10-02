@@ -40,3 +40,31 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+## Database (Prisma + SQLite)
+
+```sh
+cp .env.example .env    # then fill in BETTER_AUTH_SECRET
+npm run db:push         # create local.db from prisma/schema.prisma
+npm run db:generate     # regenerate the Prisma client
+npm run db:seed         # load demo data (idempotent — safe to re-run)
+npm run db:studio       # browse the data in Prisma Studio
+```
+
+## Demo accounts
+
+The seed creates these loginable accounts (password for all: `password123!`):
+
+| Email                       | Name            | Role                                  |
+| --------------------------- | --------------- | ------------------------------------- |
+| `seed_maria@takethelead.dev` | Maria Alvarez   | Owner of 3 stories, co-manager on 1   |
+| `seed_james@takethelead.dev` | James Alvarez   | Co-manager (MANAGER) on Bella's story |
+| `seed_pat@takethelead.dev`   | Pat Nguyen      | Owner of 3 stories                    |
+| `seed_mod@takethelead.dev`   | Dana Whitfield  | Moderator (`isModerator`) — review queue |
+
+A non-loginable `system` user (`id = "system"`) exists to own orphaned stories.
+
+Demo data covers: approved/pending/closed/draft stories, anonymous owners,
+multi-pet stories, family co-management, guest + anonymous donations, refunded
+donations, verified and unverified vet invoices, a near-duplicate clinic pair,
+and a CHANGES_REQUESTED → APPROVED moderation trail.
