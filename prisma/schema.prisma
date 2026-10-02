@@ -10,14 +10,6 @@ datasource db {
   provider = "sqlite"
 }
 
-// ---------- App models ----------
-
-model Task {
-  id       String @id @default(cuid())
-  title    String
-  priority Int    @default(1)
-}
-
 // ---------- Better Auth models ----------
 
 model User {
@@ -29,8 +21,23 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now())
 
+  // ---- TakeTheLead app fields (register in auth.ts user.additionalFields) ----
+  isModerator Boolean @default(false) /// gates the story review queue
+  isSystem    Boolean @default(false) /// seeded orphan owner, excluded from user lists
+
   sessions Session[]
   accounts Account[]
+
+  // ---- app relations ----
+  pets               Pet[]
+  stories            Story[]       @relation("StoryOwner")
+  memberships        StoryMember[]
+  invitedMembers     StoryMember[] @relation("MemberInvites")
+  donations          Donation[]
+  reviews            StoryReview[]
+  createdClinics     VetClinic[]
+  verifiedVetRecords VetRecord[]   @relation("VetRecordVerified")
+  uploadedVetRecords VetRecord[]   @relation("VetRecordUploaded")
 
   @@map("user")
 }
@@ -74,4 +81,242 @@ model Verification {
   updatedAt DateTime @default(now())
 
   @@map("verification")
+}
+
+// ---------- TakeTheLead app models (v1) ----------
+// SQLite has no native enums: every "enum" below is a String whose allowed
+// values are declared as TS unions in src/lib/server/db/enums.ts.
+// Money is always Int cents; never Float.
+
+model Pet {
+  id          String    @id @default(cuid())
+  name        String
+  species     String
+  breed       String?
+  dateOfBirth DateTime?
+  sex         String?
+  photoUrl    String?
+  bio         String?
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  storyPets StoryPet[]
+
+  @@index([ownerId])
+  @@map("pet")
+}
+
+model Story {
+  id            String  @id @default(cuid())
+  slug          String  @unique
+  title         String
+  summary       String?
+  body          String
+  coverImageUrl String?
+
+  /// DRAFT | PENDING_REVIEW | APPROVED | REJECTED | CLOSED | ARCHIVED
+  status     String @default("DRAFT")
+  /// PUBLIC | UNLISTED | PRIVATE
+  visibility String @default("PUBLIC")
+
+  goalAmountCents Int?
+  deadline        DateTime?
+  raisedCents     Int       @default(0) /// CACHE ONLY: sum of COMPLETED donations, updated in-transaction
+
+  allowGuestDonations Boolean @default(true)
+
+  // per-story presentation, NOT user identity (see plan rationale)
+  isOwnerAnonymous Boolean @default(false)
+  ownerDisplayName String?
+
+  vetClinicId String?
+  vetClinic   VetClinic? @relation(fields: [vetClinicId], references: [id], onDelete: SetNull)
+
+  ownerId String
+  owner   User   @relation("StoryOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  publishedAt DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+
+  pets       StoryPet[]
+  members    StoryMember[]
+  images     StoryImage[]
+  donations  Donation[]
+  vetRecords VetRecord[]
+  reviews    StoryReview[]
+
+  @@index([status, visibility, createdAt])
+  @@index([ownerId])
+  @@index([vetClinicId])
+  @@map("story")
+}
+
+model StoryPet {
+  storyId   String
+  petId     String
+  /// PRIMARY | SECONDARY
+  role      String   @default("PRIMARY")
+  createdAt DateTime @default(now())
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  pet   Pet   @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, petId])
+  @@index([petId])
+  @@map("story_pet")
+}
+
+model StoryMember {
+  storyId String
+  userId  String
+  /// OWNER | MANAGER | VIEWER
+  role    String @default("MANAGER")
+  /// PENDING | ACCEPTED | DECLINED | REVOKED
+  status  String @default("PENDING")
+
+  invitedById String?
+  invitedBy   User?   @relation("MemberInvites", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  joinedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, userId])
+  @@index([userId, status])
+  @@map("story_member")
+}
+
+model StoryImage {
+  id        String  @id @default(cuid())
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+  widthPx   Int?
+  heightPx  Int?
+
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@index([storyId, sortOrder])
+  @@map("story_image")
+}
+
+model Donation {
+  id String @id @default(cuid())
+
+  donorUserId String?
+  donorUser   User?   @relation(fields: [donorUserId], references: [id], onDelete: SetNull)
+  donorName   String?
+  isAnonymous Boolean @default(false)
+
+  amountCents Int
+  currency    String @default("usd")
+  feeCents    Int    @default(0)
+
+  /// PENDING | COMPLETED | FAILED | REFUNDED | DISPUTED | CANCELLED
+  status      String  @default("PENDING")
+  /// MANUAL | STRIPE | PAYPAL | CASH | CHECK
+  provider    String  @default("MANUAL")
+  providerRef String? @unique
+
+  message       String?
+  receiptNumber String?   @unique
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+  refundedAt    DateTime?
+
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@index([storyId, status])
+  @@index([donorUserId])
+  @@index([status, createdAt])
+  @@map("donation")
+}
+
+model VetClinic {
+  id          String  @id @default(cuid())
+  name        String
+  addressLine String?
+  city        String?
+  state       String?
+  postalCode  String?
+  phone       String?
+  email       String?
+  website     String?
+  isVerified  Boolean @default(false)
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  stories    Story[]
+  vetRecords VetRecord[]
+
+  @@index([city, state])
+  @@index([name])
+  @@map("vet_clinic")
+}
+
+model VetRecord {
+  id String @id @default(cuid())
+
+  clinicId   String?
+  clinic     VetClinic? @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+  clinicName String? /// free-text fallback when the clinic is not in the directory
+
+  /// ESTIMATE | INVOICE | RECEIPT | RECORD
+  kind String @default("INVOICE")
+
+  title         String
+  amountCents   Int?
+  invoiceNumber String?
+  documentUrl   String? /// private R2 storage, signed URLs only
+
+  isVerified   Boolean @default(false)
+  verifiedById String?
+  verifiedBy   User?   @relation("VetRecordVerified", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  uploadedById String
+  uploadedBy   User   @relation("VetRecordUploaded", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@index([storyId])
+  @@index([clinicId])
+  @@map("vet_record")
+}
+
+model StoryReview {
+  id String @id @default(cuid())
+
+  /// APPROVED | REJECTED | CHANGES_REQUESTED
+  decision String
+  reason   String? /// doubles as the rejection reason
+
+  reviewerId String
+  reviewer   User   @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@index([storyId, createdAt])
+  @@index([createdAt])
+  @@map("story_review")
 }

@@ -10,6 +10,22 @@ export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
 	database: prismaAdapter(db, { provider: 'sqlite' }),
 	emailAndPassword: { enabled: true },
+	user: {
+		additionalFields: {
+			isModerator: {
+				type: 'boolean',
+				required: false,
+				defaultValue: false,
+				input: false // never settable via signup/update profile
+			},
+			isSystem: {
+				type: 'boolean',
+				required: false,
+				defaultValue: false,
+				input: false
+			}
+		}
+	},
 	plugins: [
 		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
 	]
