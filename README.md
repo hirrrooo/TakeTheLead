@@ -4,7 +4,7 @@ A nonprofit web app that helps pet owners cover urgent vet bills with 30-day fun
 
 ## Develop locally
 
-Install [Node.js 24](https://nodejs.org/en/download), which includes npm, then run:
+Install [Node.js](https://nodejs.org/en/download) (v24 or later), which includes npm, then run:
 
 ```bash
 npm ci
@@ -25,12 +25,12 @@ The Coolify deployment uses SQLite in persistent storage. Keep the app to one re
 
 Create an application in Coolify from this repository and select **Railpack** as the build strategy. Use the repository root as the base directory. Railpack can use the package scripts below, or set them explicitly in the build settings:
 
-| Setting | Value |
-| --- | --- |
-| Install command | `npm ci` |
-| Build command | `npm run build` |
-| Start command | `npm run start` |
-| Exposed port | `3000` |
+| Setting         | Value           |
+| --------------- | --------------- |
+| Install command | `npm ci`        |
+| Build command   | `npm run build` |
+| Start command   | `npm run start` |
+| Exposed port    | `3000`          |
 
 Add these environment variables in Coolify:
 
