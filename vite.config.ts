@@ -6,7 +6,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	server: {
 		host: true,
-		allowedHosts: ['5173--main--411test--hbasil.coder.cs.odu.edu']
+		allowedHosts: true
 	},
 	plugins: [
 		tailwindcss(),
