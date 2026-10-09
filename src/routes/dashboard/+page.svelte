@@ -30,7 +30,7 @@
 	let notice = $state<'saved' | 'published' | null>(null);
 
 	/** A user may only run one campaign at a time. */
-	const hasRunningCampaign = $derived(campaign !== null);
+	const hasRunningCampaign = $derived(campaign != null);
 
 	const greeting = $derived.by(() => {
 		const hour = new Date(now).getHours();
