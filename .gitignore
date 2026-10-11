@@ -43,6 +43,9 @@ prisma/*.db
 prisma/*.db-*
 src/generated/prisma/
 
+# Generated SQL dumps / link-check reports (npm run db:clean)
+.db-output/
+
 # Python
 __pycache__/
 *.py[cod]
