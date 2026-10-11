@@ -60,8 +60,9 @@ build/
 out/
 coverage/
 
-# Claude Code local settings and session context
-.claude/settings.local.json
+# Claude Code and OpenCode local config / session context
+.claude/
+.opencode/
 CLAUDE.local.md
 
 # Private project documents (kept local, never pushed)
