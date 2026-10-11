@@ -54,6 +54,12 @@ npm run db:studio       # browse the data in Prisma Studio
 Everything above works the same on Linux. `db:seed` runs `tsx prisma/seed.ts`;
 the two `.mjs` scripts below run on plain `node`.
 
+> **Pulling this branch for the first time?** `Story` was renamed to `Campaign`
+> and `VetClinic` to `VetHospital`, so an existing `local.db` still has the old
+> tables and pages will fail with `no such table: main.vet_hospital`. Run
+> `npm run db:reset` once — it drops and rebuilds the dev database, and only
+> ever held seed rows.
+
 ### What the seed contains
 
 `prisma/seed-data.ts` holds the data and nothing else; `prisma/seed.ts` only
