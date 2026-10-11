@@ -42,7 +42,11 @@ Add these environment variables in Coolify:
 HOST=0.0.0.0
 PORT=3000
 DATABASE_URL=file:/data/takethelead.db
+ORIGIN=https://your-domain.example
+BETTER_AUTH_SECRET=<32 character secret>
 ```
+
+`ORIGIN` is the public URL of the deployment; Better Auth uses it as its `baseURL` for callbacks and redirects. `BETTER_AUTH_SECRET` signs sessions and is required — the server refuses to start auth without it.
 
 Add persistent storage with the container mount path `/data` and make sure the app can write to it. The database URL points to that volume, so database contents survive rebuilds and redeployments. Do not use the container's writable layer for the database file.
 
