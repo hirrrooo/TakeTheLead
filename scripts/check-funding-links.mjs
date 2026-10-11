@@ -24,12 +24,19 @@
  * works on the Linux server as well as locally.
  */
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import Database from 'better-sqlite3';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ICONS = { ok: 'ok     ', paused: 'PAUSED ', closed: 'CLOSED ', parked: 'PARKED ', http: 'HTTP   ', error: 'FAIL   ' };
+const ICONS = {
+	ok: 'ok     ',
+	paused: 'PAUSED ',
+	closed: 'CLOSED ',
+	parked: 'PARKED ',
+	http: 'HTTP   ',
+	error: 'FAIL   '
+};
 /** Statuses that usually mean "a robot asked", not "the page is gone". */
 const BLOCKED_CODES = new Set([401, 403, 429, 503]);
 const args = process.argv.slice(2);
@@ -42,13 +49,12 @@ function flagValue(name) {
 	return hit ? hit.slice(name.length + 1) : null;
 }
 
-const raw = process.env.DATABASE_URL;
-if (!raw) {
-	console.error('DATABASE_URL is not set (check .env)');
-	process.exit(1);
-}
-const rel = raw.replace(/^file:/, '').replace(/^\.\//, '');
-const db = createClient({ url: `file:${resolve(ROOT, rel)}` });
+const raw = process.env.DATABASE_URL ?? 'file:./prisma/dev.db';
+const rel = raw
+	.replace(/^file:/, '')
+	.replace(/^\.\//, '')
+	.split('?')[0];
+const db = new Database(resolve(ROOT, rel), { readonly: !STAMP });
 
 /**
  * Words that mean "this program is gone" even though the page loads fine.
@@ -92,12 +98,12 @@ const results = [];
 for (const key of Object.keys(TABLES)) {
 	if (onlyTable && onlyTable !== key) continue;
 	const { table, label, urlColumn } = TABLES[key];
-	const info = await db.execute(`PRAGMA table_info(${table})`);
-	if (info.rows.length === 0) {
+	const info = db.prepare(`PRAGMA table_info(${table})`).all();
+	if (info.length === 0) {
 		console.warn(`skip ${label}: table ${table} does not exist yet (run npm run db:push)`);
 		continue;
 	}
-	const hasColumn = (name) => info.rows.some((r) => r.name === name);
+	const hasColumn = (name) => info.some((r) => r.name === name);
 	if (!hasColumn(urlColumn)) {
 		console.warn(`skip ${label}: ${table}.${urlColumn} does not exist yet (run npm run db:push)`);
 		continue;
@@ -106,10 +112,12 @@ for (const key of Object.keys(TABLES)) {
 	// Retired listings stay in the database for history but are not re-checked.
 	const retired = hasColumn('retiredAt') ? 'AND retiredAt IS NULL' : '';
 	console.log(`\n${label}`);
-	const { rows } = await db.execute(
-		`SELECT id, name, ${urlColumn} AS url, verifiedAt, lastCheckedAt FROM ${table}
-		 WHERE ${urlColumn} IS NOT NULL AND id LIKE 'seed_%' ${retired} ORDER BY name`
-	);
+	const rows = db
+		.prepare(
+			`SELECT id, name, ${urlColumn} AS url, verifiedAt, lastCheckedAt FROM ${table}
+			 WHERE ${urlColumn} IS NOT NULL AND id LIKE 'seed_%' ${retired} ORDER BY name`
+		)
+		.all();
 
 	for (const row of rows) {
 		const outcome = await check(row.url);
@@ -140,16 +148,29 @@ async function check(link) {
 
 		if (!res.ok) {
 			// 403/429 on a healthy site usually means bot protection, not a dead link.
-			const hint = BLOCKED_CODES.has(res.status) ? ' (often bot protection — open it in a browser)' : '';
+			const hint = BLOCKED_CODES.has(res.status)
+				? ' (often bot protection — open it in a browser)'
+				: '';
 			return { status: 'http', code: `${res.status}`, note: `${res.statusText}${hint}`, ok: false };
 		}
-		if (/domain (?:is )?for sale|buy this domain|has been recently registered|under construction/i.test(body)) {
-			return { status: 'parked', code: `${res.status}`, note: 'page looks like a parked domain', ok: false };
+		if (
+			/domain (?:is )?for sale|buy this domain|has been recently registered|under construction/i.test(
+				body
+			)
+		) {
+			return {
+				status: 'parked',
+				code: `${res.status}`,
+				note: 'page looks like a parked domain',
+				ok: false
+			};
 		}
 		const closed = firstMatch(body, CLOSED_PATTERNS);
 		const paused = firstMatch(body, PAUSED_PATTERNS);
-		if (closed) return { status: 'closed', code: `${res.status}`, note: snippet(body, closed), ok: false };
-		if (paused) return { status: 'paused', code: `${res.status}`, note: snippet(body, paused), ok: true };
+		if (closed)
+			return { status: 'closed', code: `${res.status}`, note: snippet(body, closed), ok: false };
+		if (paused)
+			return { status: 'paused', code: `${res.status}`, note: snippet(body, paused), ok: true };
 		return { status: 'ok', code: `${res.status}`, note: '', ok: true };
 	} catch (error) {
 		const code = error?.cause?.code ?? error?.name ?? 'error';
@@ -192,10 +213,10 @@ async function stamp(table, id, o) {
 	const sets = [`lastCheckedAt = '${now}'`];
 	// verifiedAt means "a human confirmed this", so it needs --verified too.
 	if (STAMP_VERIFIED && o.status === 'ok') sets.push(`verifiedAt = '${now}'`);
-	await db.execute(`UPDATE ${table} SET ${sets.join(', ')} WHERE id = '${id}'`);
+	db.prepare(`UPDATE ${table} SET ${sets.join(', ')} WHERE id = ?`).run(id);
 }
 
-await db.close();
+db.close();
 
 const bad = results.filter((r) => !r.ok);
 const paused = results.filter((r) => r.status === 'paused');

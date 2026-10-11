@@ -49,11 +49,41 @@ export interface SeedUser {
 export const SEED_PASSWORD = 'password123!';
 
 export const seedUsers: SeedUser[] = [
-	{ id: 'system', name: 'TakeTheLead System', email: 'system@takethelead.dev', isSystem: true, isModerator: false },
-	{ id: 'seed_maria', name: 'Maria Alvarez', email: 'seed_maria@takethelead.dev', isSystem: false, isModerator: false },
-	{ id: 'seed_james', name: 'James Alvarez', email: 'seed_james@takethelead.dev', isSystem: false, isModerator: false },
-	{ id: 'seed_pat', name: 'Pat Nguyen', email: 'seed_pat@takethelead.dev', isSystem: false, isModerator: false },
-	{ id: 'seed_mod', name: 'Dana Whitfield', email: 'seed_mod@takethelead.dev', isSystem: false, isModerator: true }
+	{
+		id: 'system',
+		name: 'TakeTheLead System',
+		email: 'system@takethelead.dev',
+		isSystem: true,
+		isModerator: false
+	},
+	{
+		id: 'seed_maria',
+		name: 'Maria Alvarez',
+		email: 'seed_maria@takethelead.dev',
+		isSystem: false,
+		isModerator: false
+	},
+	{
+		id: 'seed_james',
+		name: 'James Alvarez',
+		email: 'seed_james@takethelead.dev',
+		isSystem: false,
+		isModerator: false
+	},
+	{
+		id: 'seed_pat',
+		name: 'Pat Nguyen',
+		email: 'seed_pat@takethelead.dev',
+		isSystem: false,
+		isModerator: false
+	},
+	{
+		id: 'seed_mod',
+		name: 'Dana Whitfield',
+		email: 'seed_mod@takethelead.dev',
+		isSystem: false,
+		isModerator: true
+	}
 ];
 
 // ---------------------------------------------------------------------------
@@ -108,7 +138,8 @@ export const seedHospitals: SeedHospital[] = [
 		emergencyHours: 'Open 24/7, including holidays',
 		speciesServed: 'Dogs, Cats',
 		services: 'Emergency, critical care, surgery, imaging',
-		notes: 'The region\u2019s only true 24/7/365 emergency hospital. After-hours primary care is the sister practice, Bay Beach Veterinary Hospital.',
+		notes:
+			'The region\u2019s only true 24/7/365 emergency hospital. After-hours primary care is the sister practice, Bay Beach Veterinary Hospital.',
 		isVerified: true,
 		latitude: 36.0821,
 		longitude: -76.1243,
@@ -130,7 +161,8 @@ export const seedHospitals: SeedHospital[] = [
 		emergencyHours: 'Continuous from Fri 7AM to Wed 6PM; closed to new cases mid-week',
 		speciesServed: 'Dogs, Cats',
 		services: 'CT, ultrasound, endoscopy, board-certified critical care',
-		notes: 'Specialty and referral hospital. Not open around the clock every day \u2014 check hours before an overnight visit.',
+		notes:
+			'Specialty and referral hospital. Not open around the clock every day \u2014 check hours before an overnight visit.',
 		isVerified: true,
 		latitude: 36.8064,
 		longitude: -76.1236,
@@ -198,7 +230,8 @@ export const seedHospitals: SeedHospital[] = [
 		emergencyHours: null,
 		speciesServed: 'Dogs, Cats',
 		services: 'Wellness, surgery, dentistry, urgent care, grooming',
-		notes: 'Full-service family practice since 1986. Mon\u2013Fri 8AM\u20135/6PM, Sat 8AM\u201312PM, closed Sunday.',
+		notes:
+			'Full-service family practice since 1986. Mon\u2013Fri 8AM\u20135/6PM, Sat 8AM\u201312PM, closed Sunday.',
 		isVerified: true,
 		latitude: 36.7228,
 		longitude: -76.2297,
@@ -220,7 +253,8 @@ export const seedHospitals: SeedHospital[] = [
 		emergencyHours: null,
 		speciesServed: 'Dogs, Cats',
 		services: 'In-hours urgent care, stabilization, hospitalization',
-		notes: 'Established 1937. Its website advertises \u201c24/7 Emergency\u201d, but the page directs overnight cases to Bay Beach, The COVE, PARC and CARE \u2014 so it is deliberately NOT flagged emergency or 24/7 here.',
+		notes:
+			'Established 1937. Its website advertises \u201c24/7 Emergency\u201d, but the page directs overnight cases to Bay Beach, The COVE, PARC and CARE \u2014 so it is deliberately NOT flagged emergency or 24/7 here.',
 		isVerified: true,
 		latitude: 36.8601,
 		longitude: -76.2954,
@@ -242,7 +276,8 @@ export const seedHospitals: SeedHospital[] = [
 		emergencyHours: null,
 		speciesServed: 'Dogs, Cats',
 		services: 'Wellness, dentistry, internal medicine',
-		notes: 'Neighbourhood family practice in Ghent; second location at 3415 Granby St, 23504. Closed Sunday, doctor hours by appointment.',
+		notes:
+			'Neighbourhood family practice in Ghent; second location at 3415 Granby St, 23504. Closed Sunday, doctor hours by appointment.',
 		isVerified: true,
 		latitude: 36.8588,
 		longitude: -76.2971,
@@ -264,7 +299,8 @@ export const seedHospitals: SeedHospital[] = [
 		emergencyHours: null,
 		speciesServed: 'Dogs, Cats, Exotics',
 		services: 'Wellness, exotics, surgery, travel certificates',
-		notes: 'AAHA-accredited, one of the few local practices with a dedicated exotics service. Extended evening hours Mon\u2013Thu.',
+		notes:
+			'AAHA-accredited, one of the few local practices with a dedicated exotics service. Extended evening hours Mon\u2013Thu.',
 		isVerified: true,
 		latitude: 36.7651,
 		longitude: -76.2441,
@@ -310,7 +346,8 @@ export const seedHospitals: SeedHospital[] = [
 		emergencyHours: null,
 		speciesServed: 'Dogs, Cats',
 		services: 'Vaccines, wellness exams, dentistry (income-qualified), spay/neuter',
-		notes: 'Walk-in vaccine clinic has no income requirement. Illness and dental exams are income-qualified and need a $30 deposit. Explicitly not an emergency facility.',
+		notes:
+			'Walk-in vaccine clinic has no income requirement. Illness and dental exams are income-qualified and need a $30 deposit. Explicitly not an emergency facility.',
 		isVerified: true,
 		latitude: 36.7702,
 		longitude: -76.2371,
@@ -332,7 +369,8 @@ export const seedHospitals: SeedHospital[] = [
 		emergencyHours: null,
 		speciesServed: 'Dogs, Cats, feral cats',
 		services: 'High-volume spay/neuter, vaccines, wellness exams, preventives',
-		notes: 'Nonprofit high-volume clinic (13,000+ animals a year). Main adoption centre is 916 Ballentine Blvd, 23504, (757) 622-3319.',
+		notes:
+			'Nonprofit high-volume clinic (13,000+ animals a year). Main adoption centre is 916 Ballentine Blvd, 23504, (757) 622-3319.',
 		isVerified: true,
 		latitude: 36.8916,
 		longitude: -76.2519,
@@ -354,7 +392,8 @@ export const seedHospitals: SeedHospital[] = [
 		emergencyHours: null,
 		speciesServed: 'Dogs, Cats',
 		services: 'Wellness, vaccines, dentistry, orthopedics, spay/neuter, heartworm treatment',
-		notes: 'Income-capped (households under $65,000) plus all military, reservists, families and first responders. Wellness clinic and spay/neuter are open to every income.',
+		notes:
+			'Income-capped (households under $65,000) plus all military, reservists, families and first responders. Wellness clinic and spay/neuter are open to every income.',
 		isVerified: true,
 		latitude: 36.8135,
 		longitude: -76.0553,
@@ -481,7 +520,8 @@ const starterFundingSources: SeedFundingSource[] = [
 		incomeRestricted: true,
 		vetMustApply: false,
 		isVerified: true,
-		verifyNote: 'Loaded 2026-10-10. Income thresholds and mailing address read from the apply page.',
+		verifyNote:
+			'Loaded 2026-10-10. Income thresholds and mailing address read from the apply page.',
 		notes: 'Paper application by mail \u2014 slowest option in this list.',
 		createdById: 'seed_mod'
 	},
@@ -504,7 +544,8 @@ const starterFundingSources: SeedFundingSource[] = [
 		incomeRestricted: true,
 		vetMustApply: false,
 		isVerified: true,
-		verifyNote: 'Loaded 2026-10-10. Exclusion list for Banfield/BluePearl/VCA confirmed on the page.',
+		verifyNote:
+			'Loaded 2026-10-10. Exclusion list for Banfield/BluePearl/VCA confirmed on the page.',
 		notes: 'The hospital-exclusion rule matters when suggesting this to an owner.',
 		createdById: 'seed_mod'
 	},
@@ -552,7 +593,8 @@ const starterFundingSources: SeedFundingSource[] = [
 		isVerified: true,
 		verifyNote:
 			'Loaded 2026-10-10. Site banner showed a closure Oct 9\u201319, so expect periodic pauses. HTTP-only domain.',
-		notes: 'Relevant to the Bella TPLO demo campaign \u2014 her quote is above their $3,700 guideline.',
+		notes:
+			'Relevant to the Bella TPLO demo campaign \u2014 her quote is above their $3,700 guideline.',
 		createdById: 'seed_mod'
 	},
 	{
@@ -616,7 +658,8 @@ const starterFundingSources: SeedFundingSource[] = [
 		howToApply:
 			'Enter a phone number on the homepage, tap \u201cFind a Payment Plan\u201d, get a decision and rate, pick a 12- or 24-month plan, then get care. No application fee.',
 		maxAwardCents: 1000000,
-		maxAwardNote: 'Approved amounts run $200\u2013$10,000; 12\u201324 month terms at 0\u201336% APR, $15 down',
+		maxAwardNote:
+			'Approved amounts run $200\u2013$10,000; 12\u201324 month terms at 0\u201336% APR, $15 down',
 		recurring: true,
 		incomeRestricted: false,
 		vetMustApply: false,
@@ -637,7 +680,8 @@ const starterFundingSources: SeedFundingSource[] = [
 			'Emergency and life-saving veterinary bills. Owners, rescues and vets raise funds for a named animal\u2019s treatment.',
 		eligibility:
 			'Open to pet guardians, animal welfare organisations and veterinary providers. Recommended by The Pet Fund and the Virginia Beach SPCA.',
-		howToApply: 'Start a campaign through \u201cGet Help\u201d on waggle.org, then share it to collect donations.',
+		howToApply:
+			'Start a campaign through \u201cGet Help\u201d on waggle.org, then share it to collect donations.',
 		maxAwardCents: null,
 		maxAwardNote: 'No published cap; each campaign sets its own goal',
 		recurring: false,
@@ -645,7 +689,8 @@ const starterFundingSources: SeedFundingSource[] = [
 		vetMustApply: false,
 		isVerified: true,
 		verifyNote: 'Loaded 2026-10-10. 501(c)(3) crowdfunding platform.',
-		notes: 'Closest existing analogue to TakeTheLead\u2019s own campaign model \u2014 useful for competitive comparison.',
+		notes:
+			'Closest existing analogue to TakeTheLead\u2019s own campaign model \u2014 useful for competitive comparison.',
 		createdById: 'seed_mod'
 	}
 ];
@@ -670,7 +715,8 @@ const addedFundingSources: SeedFundingSource[] = [
 		howToApply:
 			'Apply through the form on the Medical Assistance page. Allow 24\u201348 hours; the mailbox is not checked after 7pm on weekdays or after 12pm Saturday. PO Box 11535, Norfolk, VA 23517, (757) 456-1354, info@artanimals.org.',
 		maxAwardCents: null,
-		maxAwardNote: 'No published cap; surgeries over $1,000 are described as \u201ca huge consideration\u201d',
+		maxAwardNote:
+			'No published cap; surgeries over $1,000 are described as \u201ca huge consideration\u201d',
 		recurring: false,
 		incomeRestricted: true,
 		vetMustApply: false,
@@ -724,8 +770,10 @@ const addedFundingSources: SeedFundingSource[] = [
 		incomeRestricted: true,
 		vetMustApply: false,
 		isVerified: true,
-		verifyNote: 'Loaded 2026-10-10. Fee schedule and income cap read directly from the clinic page.',
-		notes: 'Same site as the VBSPCA hospital listing; kept as a source because owners search for it as financial help.',
+		verifyNote:
+			'Loaded 2026-10-10. Fee schedule and income cap read directly from the clinic page.',
+		notes:
+			'Same site as the VBSPCA hospital listing; kept as a source because owners search for it as financial help.',
 		createdById: 'seed_mod'
 	},
 	{
@@ -748,7 +796,8 @@ const addedFundingSources: SeedFundingSource[] = [
 		vetMustApply: false,
 		isVerified: true,
 		verifyNote: 'Loaded 2026-10-10. Dogs-only restriction confirmed on the Apply for Aid page.',
-		notes: 'Dogs only, and explicitly not for emergencies \u2014 filter by species before suggesting.',
+		notes:
+			'Dogs only, and explicitly not for emergencies \u2014 filter by species before suggesting.',
 		createdById: 'seed_mod'
 	}
 ];
@@ -782,11 +831,61 @@ export interface SeedPet {
 }
 
 export const seedPets: SeedPet[] = [
-	{ id: 'seed_pet_bella', name: 'Bella', species: 'Dog', breed: 'Golden Retriever', dateOfBirth: new Date('2019-04-12'), sex: 'F', photoUrl: 'https://picsum.photos/seed/bella/400/400', bio: 'Loves tennis balls and belly rubs.', ownerId: 'seed_maria' },
-	{ id: 'seed_pet_max', name: 'Max', species: 'Cat', breed: 'Domestic Shorthair', dateOfBirth: new Date('2017-09-01'), sex: 'M', photoUrl: 'https://picsum.photos/seed/maxcat/400/400', bio: 'A dignified gentleman who demands breakfast at 5am.', ownerId: 'seed_maria' },
-	{ id: 'seed_pet_whiskers', name: 'Whiskers', species: 'Cat', breed: 'Tabby', dateOfBirth: null, sex: 'M', photoUrl: 'https://picsum.photos/seed/whiskers/400/400', bio: 'Indoor cat, outdoor opinions.', ownerId: 'seed_maria' },
-	{ id: 'seed_pet_ruby', name: 'Ruby', species: 'Dog', breed: 'Puppy (mixed)', dateOfBirth: new Date('2025-11-20'), sex: 'F', photoUrl: 'https://picsum.photos/seed/rubydog/400/400', bio: 'Tiny, loud, and worth every cent.', ownerId: 'seed_pat' },
-	{ id: 'seed_pet_duke', name: 'Duke', species: 'Dog', breed: 'Labrador', dateOfBirth: new Date('2025-10-02'), sex: 'M', photoUrl: 'https://picsum.photos/seed/dukedog/400/400', bio: 'Ruby\u2019s big brother in every way that matters.', ownerId: 'seed_pat' }
+	{
+		id: 'seed_pet_bella',
+		name: 'Bella',
+		species: 'Dog',
+		breed: 'Golden Retriever',
+		dateOfBirth: new Date('2019-04-12'),
+		sex: 'F',
+		photoUrl: 'https://picsum.photos/seed/bella/400/400',
+		bio: 'Loves tennis balls and belly rubs.',
+		ownerId: 'seed_maria'
+	},
+	{
+		id: 'seed_pet_max',
+		name: 'Max',
+		species: 'Cat',
+		breed: 'Domestic Shorthair',
+		dateOfBirth: new Date('2017-09-01'),
+		sex: 'M',
+		photoUrl: 'https://picsum.photos/seed/maxcat/400/400',
+		bio: 'A dignified gentleman who demands breakfast at 5am.',
+		ownerId: 'seed_maria'
+	},
+	{
+		id: 'seed_pet_whiskers',
+		name: 'Whiskers',
+		species: 'Cat',
+		breed: 'Tabby',
+		dateOfBirth: null,
+		sex: 'M',
+		photoUrl: 'https://picsum.photos/seed/whiskers/400/400',
+		bio: 'Indoor cat, outdoor opinions.',
+		ownerId: 'seed_maria'
+	},
+	{
+		id: 'seed_pet_ruby',
+		name: 'Ruby',
+		species: 'Dog',
+		breed: 'Puppy (mixed)',
+		dateOfBirth: new Date('2025-11-20'),
+		sex: 'F',
+		photoUrl: 'https://picsum.photos/seed/rubydog/400/400',
+		bio: 'Tiny, loud, and worth every cent.',
+		ownerId: 'seed_pat'
+	},
+	{
+		id: 'seed_pet_duke',
+		name: 'Duke',
+		species: 'Dog',
+		breed: 'Labrador',
+		dateOfBirth: new Date('2025-10-02'),
+		sex: 'M',
+		photoUrl: 'https://picsum.photos/seed/dukedog/400/400',
+		bio: 'Ruby\u2019s big brother in every way that matters.',
+		ownerId: 'seed_pat'
+	}
 ];
 
 // ---------------------------------------------------------------------------
@@ -971,28 +1070,152 @@ export interface SeedMember {
 }
 
 export const seedMembers: SeedMember[] = [
-	{ campaignId: 'seed_camp_bella', userId: 'seed_maria', role: 'OWNER', status: 'ACCEPTED', invitedById: null },
-	{ campaignId: 'seed_camp_bella', userId: 'seed_james', role: 'MANAGER', status: 'ACCEPTED', invitedById: 'seed_maria' },
-	{ campaignId: 'seed_camp_max', userId: 'seed_maria', role: 'OWNER', status: 'ACCEPTED', invitedById: null },
-	{ campaignId: 'seed_camp_whiskers', userId: 'seed_maria', role: 'OWNER', status: 'ACCEPTED', invitedById: null },
-	{ campaignId: 'seed_camp_ruby_duke', userId: 'seed_pat', role: 'OWNER', status: 'ACCEPTED', invitedById: null },
-	{ campaignId: 'seed_camp_ruby_duke', userId: 'seed_maria', role: 'MANAGER', status: 'ACCEPTED', invitedById: 'seed_pat' },
-	{ campaignId: 'seed_camp_ghost', userId: 'seed_pat', role: 'OWNER', status: 'ACCEPTED', invitedById: null },
-	{ campaignId: 'seed_camp_senior_cat', userId: 'seed_pat', role: 'OWNER', status: 'ACCEPTED', invitedById: null },
+	{
+		campaignId: 'seed_camp_bella',
+		userId: 'seed_maria',
+		role: 'OWNER',
+		status: 'ACCEPTED',
+		invitedById: null
+	},
+	{
+		campaignId: 'seed_camp_bella',
+		userId: 'seed_james',
+		role: 'MANAGER',
+		status: 'ACCEPTED',
+		invitedById: 'seed_maria'
+	},
+	{
+		campaignId: 'seed_camp_max',
+		userId: 'seed_maria',
+		role: 'OWNER',
+		status: 'ACCEPTED',
+		invitedById: null
+	},
+	{
+		campaignId: 'seed_camp_whiskers',
+		userId: 'seed_maria',
+		role: 'OWNER',
+		status: 'ACCEPTED',
+		invitedById: null
+	},
+	{
+		campaignId: 'seed_camp_ruby_duke',
+		userId: 'seed_pat',
+		role: 'OWNER',
+		status: 'ACCEPTED',
+		invitedById: null
+	},
+	{
+		campaignId: 'seed_camp_ruby_duke',
+		userId: 'seed_maria',
+		role: 'MANAGER',
+		status: 'ACCEPTED',
+		invitedById: 'seed_pat'
+	},
+	{
+		campaignId: 'seed_camp_ghost',
+		userId: 'seed_pat',
+		role: 'OWNER',
+		status: 'ACCEPTED',
+		invitedById: null
+	},
+	{
+		campaignId: 'seed_camp_senior_cat',
+		userId: 'seed_pat',
+		role: 'OWNER',
+		status: 'ACCEPTED',
+		invitedById: null
+	},
 	// A still-pending invite and a viewer, to exercise the state matrix.
-	{ campaignId: 'seed_camp_bella', userId: 'seed_pat', role: 'VIEWER', status: 'PENDING', invitedById: 'seed_maria' },
-	{ campaignId: 'seed_camp_ghost', userId: 'seed_james', role: 'VIEWER', status: 'ACCEPTED', invitedById: 'seed_pat' }
+	{
+		campaignId: 'seed_camp_bella',
+		userId: 'seed_pat',
+		role: 'VIEWER',
+		status: 'PENDING',
+		invitedById: 'seed_maria'
+	},
+	{
+		campaignId: 'seed_camp_ghost',
+		userId: 'seed_james',
+		role: 'VIEWER',
+		status: 'ACCEPTED',
+		invitedById: 'seed_pat'
+	}
 ];
 
 export const seedImages = [
-	{ id: 'seed_img_bella_1', campaignId: 'seed_camp_bella', url: 'https://picsum.photos/seed/bella1/1200/800', alt: 'Bella at the orthopedic specialist', sortOrder: 0, widthPx: 1200, heightPx: 800 },
-	{ id: 'seed_img_bella_2', campaignId: 'seed_camp_bella', url: 'https://picsum.photos/seed/bella2/1200/800', alt: 'Bella mid-chase, before the injury', sortOrder: 1, widthPx: 1200, heightPx: 800 },
-	{ id: 'seed_img_max_1', campaignId: 'seed_camp_max', url: 'https://picsum.photos/seed/max1/1200/800', alt: 'Max at his diagnosis appointment', sortOrder: 0, widthPx: 1200, heightPx: 800 },
-	{ id: 'seed_img_whiskers_1', campaignId: 'seed_camp_whiskers', url: 'https://picsum.photos/seed/whiskers1/1200/800', alt: 'Whiskers recovering with his cone', sortOrder: 0, widthPx: 1200, heightPx: 800 },
-	{ id: 'seed_img_puppies_1', campaignId: 'seed_camp_ruby_duke', url: 'https://picsum.photos/seed/ruby1/1200/800', alt: 'Ruby on IV fluids', sortOrder: 0, widthPx: 1200, heightPx: 800 },
-	{ id: 'seed_img_puppies_2', campaignId: 'seed_camp_ruby_duke', url: 'https://picsum.photos/seed/duke1/1200/800', alt: 'Duke\u2019s first meal after treatment', sortOrder: 1, widthPx: 1200, heightPx: 800 },
-	{ id: 'seed_img_ghost_1', campaignId: 'seed_camp_ghost', url: 'https://picsum.photos/seed/ghost1/1200/800', alt: 'Ghost on a long walk', sortOrder: 0, widthPx: 1200, heightPx: 800 },
-	{ id: 'seed_img_miso_1', campaignId: 'seed_camp_senior_cat', url: 'https://picsum.photos/seed/miso1/1200/800', alt: 'Miso in her sunny hospice spot', sortOrder: 0, widthPx: 1200, heightPx: 800 }
+	{
+		id: 'seed_img_bella_1',
+		campaignId: 'seed_camp_bella',
+		url: 'https://picsum.photos/seed/bella1/1200/800',
+		alt: 'Bella at the orthopedic specialist',
+		sortOrder: 0,
+		widthPx: 1200,
+		heightPx: 800
+	},
+	{
+		id: 'seed_img_bella_2',
+		campaignId: 'seed_camp_bella',
+		url: 'https://picsum.photos/seed/bella2/1200/800',
+		alt: 'Bella mid-chase, before the injury',
+		sortOrder: 1,
+		widthPx: 1200,
+		heightPx: 800
+	},
+	{
+		id: 'seed_img_max_1',
+		campaignId: 'seed_camp_max',
+		url: 'https://picsum.photos/seed/max1/1200/800',
+		alt: 'Max at his diagnosis appointment',
+		sortOrder: 0,
+		widthPx: 1200,
+		heightPx: 800
+	},
+	{
+		id: 'seed_img_whiskers_1',
+		campaignId: 'seed_camp_whiskers',
+		url: 'https://picsum.photos/seed/whiskers1/1200/800',
+		alt: 'Whiskers recovering with his cone',
+		sortOrder: 0,
+		widthPx: 1200,
+		heightPx: 800
+	},
+	{
+		id: 'seed_img_puppies_1',
+		campaignId: 'seed_camp_ruby_duke',
+		url: 'https://picsum.photos/seed/ruby1/1200/800',
+		alt: 'Ruby on IV fluids',
+		sortOrder: 0,
+		widthPx: 1200,
+		heightPx: 800
+	},
+	{
+		id: 'seed_img_puppies_2',
+		campaignId: 'seed_camp_ruby_duke',
+		url: 'https://picsum.photos/seed/duke1/1200/800',
+		alt: 'Duke\u2019s first meal after treatment',
+		sortOrder: 1,
+		widthPx: 1200,
+		heightPx: 800
+	},
+	{
+		id: 'seed_img_ghost_1',
+		campaignId: 'seed_camp_ghost',
+		url: 'https://picsum.photos/seed/ghost1/1200/800',
+		alt: 'Ghost on a long walk',
+		sortOrder: 0,
+		widthPx: 1200,
+		heightPx: 800
+	},
+	{
+		id: 'seed_img_miso_1',
+		campaignId: 'seed_camp_senior_cat',
+		url: 'https://picsum.photos/seed/miso1/1200/800',
+		alt: 'Miso in her sunny hospice spot',
+		sortOrder: 0,
+		widthPx: 1200,
+		heightPx: 800
+	}
 ];
 
 // ---------------------------------------------------------------------------
@@ -1044,7 +1267,8 @@ export const seedPromisesToPay: SeedPromiseToPay[] = [
 		ownerMaxObligationCents: 0,
 		ttlCoversText:
 			'There is no single bill. TakeTheLead sends monthly insulin money to your clinic as donations come in.',
-		ownerObligationText: 'You owe nothing up front. You only pay for care that fundraising does not cover.',
+		ownerObligationText:
+			'You owe nothing up front. You only pay for care that fundraising does not cover.',
 		accepted: true,
 		acceptedBy: 'seed_maria',
 		termsVersion: '2026-10'
@@ -1070,7 +1294,8 @@ export const seedPromisesToPay: SeedPromiseToPay[] = [
 		ownerMaxObligationCents: 26000,
 		ttlCoversText:
 			'TakeTheLead pays the parvo treatment bills to the hospital as donations arrive, up to $2,500.',
-		ownerObligationText: 'You owe up to $260 \u2014 the gap between what we raise and the final bill.',
+		ownerObligationText:
+			'You owe up to $260 \u2014 the gap between what we raise and the final bill.',
 		accepted: true,
 		acceptedBy: 'seed_pat',
 		termsVersion: '2026-10'
@@ -1082,7 +1307,8 @@ export const seedPromisesToPay: SeedPromiseToPay[] = [
 		ttlCoversCents: 118000,
 		ownerMaxObligationCents: 0,
 		ttlCoversText: 'TakeTheLead paid the hospice bill in full before the deadline.',
-		ownerObligationText: 'Nothing was owed. The fund closed with $420 left over, which went to another pet.',
+		ownerObligationText:
+			'Nothing was owed. The fund closed with $420 left over, which went to another pet.',
 		accepted: true,
 		acceptedBy: 'seed_pat',
 		termsVersion: '2026-10'
@@ -1094,7 +1320,8 @@ export const seedPromisesToPay: SeedPromiseToPay[] = [
 		billAmountCents: 180000,
 		ttlCoversCents: 150000,
 		ownerMaxObligationCents: 30000,
-		ttlCoversText: 'TakeTheLead pays the orthopedic clinic directly for Ghost\u2019s staged treatment, up to $1,500.',
+		ttlCoversText:
+			'TakeTheLead pays the orthopedic clinic directly for Ghost\u2019s staged treatment, up to $1,500.',
 		ownerObligationText: 'You owe up to $300 \u2014 whatever the fundraising does not reach.',
 		accepted: false,
 		acceptedBy: null,
@@ -1123,33 +1350,303 @@ export interface SeedDonation {
  * status, and the SIMULATED provider that TTL-207 uses before Stripe arrives.
  */
 export const seedDonations: SeedDonation[] = [
-	{ id: 'seed_don_b01', campaignId: 'seed_camp_bella', donorUserId: 'seed_james', donorName: null, isAnonymous: false, amountCents: 20000, status: 'COMPLETED', provider: 'MANUAL', message: 'For our girl \u2014 love you both.' },
-	{ id: 'seed_don_b02', campaignId: 'seed_camp_bella', donorUserId: null, donorName: 'Grace L.', isAnonymous: false, amountCents: 5000, status: 'COMPLETED', provider: 'SIMULATED', message: 'From one Golden owner to another.' },
-	{ id: 'seed_don_b03', campaignId: 'seed_camp_bella', donorUserId: null, donorName: 'Anonymous', isAnonymous: true, amountCents: 10000, status: 'COMPLETED', provider: 'SIMULATED', message: null },
-	{ id: 'seed_don_b04', campaignId: 'seed_camp_bella', donorUserId: 'seed_pat', donorName: null, isAnonymous: false, amountCents: 3000, status: 'COMPLETED', provider: 'SIMULATED', message: 'Not much, but she is a good girl.' },
-	{ id: 'seed_don_b05', campaignId: 'seed_camp_bella', donorUserId: null, donorName: 'The Okafor Family', isAnonymous: false, amountCents: 25000, status: 'COMPLETED', provider: 'CHECK', message: 'Go Bella!' },
-	{ id: 'seed_don_b06', campaignId: 'seed_camp_bella', donorUserId: null, donorName: 'Anonymous', isAnonymous: true, amountCents: 15000, status: 'COMPLETED', provider: 'SIMULATED', message: 'Wishing her a fast recovery.' },
-	{ id: 'seed_don_b07', campaignId: 'seed_camp_bella', donorUserId: 'seed_mod', donorName: null, isAnonymous: false, amountCents: 7500, status: 'COMPLETED', provider: 'MANUAL', message: 'Moderator hat off, donor hat on.' },
-	{ id: 'seed_don_b08', campaignId: 'seed_camp_bella', donorUserId: null, donorName: 'Sam R.', isAnonymous: false, amountCents: 4000, status: 'PENDING', provider: 'MANUAL', message: 'Check is in the mail.' },
-	{ id: 'seed_don_b09', campaignId: 'seed_camp_bella', donorUserId: null, donorName: 'Anonymous', isAnonymous: true, amountCents: 50000, status: 'REFUNDED', provider: 'SIMULATED', message: null },
-	{ id: 'seed_don_m01', campaignId: 'seed_camp_max', donorUserId: 'seed_pat', donorName: null, isAnonymous: false, amountCents: 2500, status: 'COMPLETED', provider: 'MANUAL', message: 'Monthly Max fund contribution.' },
-	{ id: 'seed_don_m02', campaignId: 'seed_camp_max', donorUserId: null, donorName: 'Priya S.', isAnonymous: false, amountCents: 1500, status: 'COMPLETED', provider: 'SIMULATED', message: 'Diabetic cat dad here. Hang in there.' },
-	{ id: 'seed_don_m03', campaignId: 'seed_camp_max', donorUserId: null, donorName: 'Anonymous', isAnonymous: true, amountCents: 2000, status: 'COMPLETED', provider: 'SIMULATED', message: null },
-	{ id: 'seed_don_m04', campaignId: 'seed_camp_max', donorUserId: null, donorName: 'Lena K.', isAnonymous: false, amountCents: 1000, status: 'FAILED', provider: 'SIMULATED', message: 'Card declined, will retry.' },
-	{ id: 'seed_don_m05', campaignId: 'seed_camp_max', donorUserId: 'seed_james', donorName: null, isAnonymous: false, amountCents: 3000, status: 'COMPLETED', provider: 'CASH', message: 'Cash from the office kitty fund.' },
-	{ id: 'seed_don_w01', campaignId: 'seed_camp_whiskers', donorUserId: null, donorName: 'Anonymous', isAnonymous: true, amountCents: 30000, status: 'COMPLETED', provider: 'SIMULATED', message: 'Blocked cats scare every cat owner. Glad he is okay.' },
-	{ id: 'seed_don_w02', campaignId: 'seed_camp_whiskers', donorUserId: 'seed_pat', donorName: null, isAnonymous: false, amountCents: 5000, status: 'COMPLETED', provider: 'SIMULATED', message: null },
-	{ id: 'seed_don_w03', campaignId: 'seed_camp_whiskers', donorUserId: null, donorName: 'ER Doc Mike', isAnonymous: false, amountCents: 10000, status: 'COMPLETED', provider: 'SIMULATED', message: 'I saw this one coming. Take care of him.' },
-	{ id: 'seed_don_w04', campaignId: 'seed_camp_whiskers', donorUserId: null, donorName: 'Anonymous', isAnonymous: true, amountCents: 8000, status: 'PENDING', provider: 'SIMULATED', message: null },
-	{ id: 'seed_don_r01', campaignId: 'seed_camp_ruby_duke', donorUserId: 'seed_maria', donorName: null, isAnonymous: false, amountCents: 15000, status: 'COMPLETED', provider: 'MANUAL', message: 'For my two favorite puppies.' },
-	{ id: 'seed_don_r02', campaignId: 'seed_camp_ruby_duke', donorUserId: null, donorName: 'Shelter Friends', isAnonymous: false, amountCents: 40000, status: 'COMPLETED', provider: 'CHECK', message: 'From the whole adoption team.' },
-	{ id: 'seed_don_r03', campaignId: 'seed_camp_ruby_duke', donorUserId: null, donorName: 'Anonymous', isAnonymous: true, amountCents: 7000, status: 'COMPLETED', provider: 'SIMULATED', message: 'Parvo sucks. Puppies win.' },
-	{ id: 'seed_don_r04', campaignId: 'seed_camp_ruby_duke', donorUserId: null, donorName: 'Chris & Ana', isAnonymous: false, amountCents: 12000, status: 'COMPLETED', provider: 'SIMULATED', message: 'So glad Duke kept his appetite.' },
-	{ id: 'seed_don_r05', campaignId: 'seed_camp_ruby_duke', donorUserId: 'seed_james', donorName: null, isAnonymous: false, amountCents: 2000, status: 'CANCELLED', provider: 'SIMULATED', message: 'Double-clicked by accident.' },
-	{ id: 'seed_don_g01', campaignId: 'seed_camp_ghost', donorUserId: 'seed_james', donorName: null, isAnonymous: false, amountCents: 5000, status: 'PENDING', provider: 'SIMULATED', message: 'Waiting on approval, sending early.' },
-	{ id: 'seed_don_s01', campaignId: 'seed_camp_senior_cat', donorUserId: null, donorName: 'Neighborhood Book Club', isAnonymous: false, amountCents: 35000, status: 'COMPLETED', provider: 'CHECK', message: 'In honor of Miso.' },
-	{ id: 'seed_don_s02', campaignId: 'seed_camp_senior_cat', donorUserId: 'seed_maria', donorName: null, isAnonymous: false, amountCents: 10000, status: 'COMPLETED', provider: 'MANUAL', message: 'She deserved every bit of sunshine.' },
-	{ id: 'seed_don_s03', campaignId: 'seed_camp_senior_cat', donorUserId: null, donorName: 'Anonymous', isAnonymous: true, amountCents: 15000, status: 'REFUNDED', provider: 'SIMULATED', message: null }
+	{
+		id: 'seed_don_b01',
+		campaignId: 'seed_camp_bella',
+		donorUserId: 'seed_james',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 20000,
+		status: 'COMPLETED',
+		provider: 'MANUAL',
+		message: 'For our girl \u2014 love you both.'
+	},
+	{
+		id: 'seed_don_b02',
+		campaignId: 'seed_camp_bella',
+		donorUserId: null,
+		donorName: 'Grace L.',
+		isAnonymous: false,
+		amountCents: 5000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: 'From one Golden owner to another.'
+	},
+	{
+		id: 'seed_don_b03',
+		campaignId: 'seed_camp_bella',
+		donorUserId: null,
+		donorName: 'Anonymous',
+		isAnonymous: true,
+		amountCents: 10000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: null
+	},
+	{
+		id: 'seed_don_b04',
+		campaignId: 'seed_camp_bella',
+		donorUserId: 'seed_pat',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 3000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: 'Not much, but she is a good girl.'
+	},
+	{
+		id: 'seed_don_b05',
+		campaignId: 'seed_camp_bella',
+		donorUserId: null,
+		donorName: 'The Okafor Family',
+		isAnonymous: false,
+		amountCents: 25000,
+		status: 'COMPLETED',
+		provider: 'CHECK',
+		message: 'Go Bella!'
+	},
+	{
+		id: 'seed_don_b06',
+		campaignId: 'seed_camp_bella',
+		donorUserId: null,
+		donorName: 'Anonymous',
+		isAnonymous: true,
+		amountCents: 15000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: 'Wishing her a fast recovery.'
+	},
+	{
+		id: 'seed_don_b07',
+		campaignId: 'seed_camp_bella',
+		donorUserId: 'seed_mod',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 7500,
+		status: 'COMPLETED',
+		provider: 'MANUAL',
+		message: 'Moderator hat off, donor hat on.'
+	},
+	{
+		id: 'seed_don_b08',
+		campaignId: 'seed_camp_bella',
+		donorUserId: null,
+		donorName: 'Sam R.',
+		isAnonymous: false,
+		amountCents: 4000,
+		status: 'PENDING',
+		provider: 'MANUAL',
+		message: 'Check is in the mail.'
+	},
+	{
+		id: 'seed_don_b09',
+		campaignId: 'seed_camp_bella',
+		donorUserId: null,
+		donorName: 'Anonymous',
+		isAnonymous: true,
+		amountCents: 50000,
+		status: 'REFUNDED',
+		provider: 'SIMULATED',
+		message: null
+	},
+	{
+		id: 'seed_don_m01',
+		campaignId: 'seed_camp_max',
+		donorUserId: 'seed_pat',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 2500,
+		status: 'COMPLETED',
+		provider: 'MANUAL',
+		message: 'Monthly Max fund contribution.'
+	},
+	{
+		id: 'seed_don_m02',
+		campaignId: 'seed_camp_max',
+		donorUserId: null,
+		donorName: 'Priya S.',
+		isAnonymous: false,
+		amountCents: 1500,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: 'Diabetic cat dad here. Hang in there.'
+	},
+	{
+		id: 'seed_don_m03',
+		campaignId: 'seed_camp_max',
+		donorUserId: null,
+		donorName: 'Anonymous',
+		isAnonymous: true,
+		amountCents: 2000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: null
+	},
+	{
+		id: 'seed_don_m04',
+		campaignId: 'seed_camp_max',
+		donorUserId: null,
+		donorName: 'Lena K.',
+		isAnonymous: false,
+		amountCents: 1000,
+		status: 'FAILED',
+		provider: 'SIMULATED',
+		message: 'Card declined, will retry.'
+	},
+	{
+		id: 'seed_don_m05',
+		campaignId: 'seed_camp_max',
+		donorUserId: 'seed_james',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 3000,
+		status: 'COMPLETED',
+		provider: 'CASH',
+		message: 'Cash from the office kitty fund.'
+	},
+	{
+		id: 'seed_don_w01',
+		campaignId: 'seed_camp_whiskers',
+		donorUserId: null,
+		donorName: 'Anonymous',
+		isAnonymous: true,
+		amountCents: 30000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: 'Blocked cats scare every cat owner. Glad he is okay.'
+	},
+	{
+		id: 'seed_don_w02',
+		campaignId: 'seed_camp_whiskers',
+		donorUserId: 'seed_pat',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 5000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: null
+	},
+	{
+		id: 'seed_don_w03',
+		campaignId: 'seed_camp_whiskers',
+		donorUserId: null,
+		donorName: 'ER Doc Mike',
+		isAnonymous: false,
+		amountCents: 10000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: 'I saw this one coming. Take care of him.'
+	},
+	{
+		id: 'seed_don_w04',
+		campaignId: 'seed_camp_whiskers',
+		donorUserId: null,
+		donorName: 'Anonymous',
+		isAnonymous: true,
+		amountCents: 8000,
+		status: 'PENDING',
+		provider: 'SIMULATED',
+		message: null
+	},
+	{
+		id: 'seed_don_r01',
+		campaignId: 'seed_camp_ruby_duke',
+		donorUserId: 'seed_maria',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 15000,
+		status: 'COMPLETED',
+		provider: 'MANUAL',
+		message: 'For my two favorite puppies.'
+	},
+	{
+		id: 'seed_don_r02',
+		campaignId: 'seed_camp_ruby_duke',
+		donorUserId: null,
+		donorName: 'Shelter Friends',
+		isAnonymous: false,
+		amountCents: 40000,
+		status: 'COMPLETED',
+		provider: 'CHECK',
+		message: 'From the whole adoption team.'
+	},
+	{
+		id: 'seed_don_r03',
+		campaignId: 'seed_camp_ruby_duke',
+		donorUserId: null,
+		donorName: 'Anonymous',
+		isAnonymous: true,
+		amountCents: 7000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: 'Parvo sucks. Puppies win.'
+	},
+	{
+		id: 'seed_don_r04',
+		campaignId: 'seed_camp_ruby_duke',
+		donorUserId: null,
+		donorName: 'Chris & Ana',
+		isAnonymous: false,
+		amountCents: 12000,
+		status: 'COMPLETED',
+		provider: 'SIMULATED',
+		message: 'So glad Duke kept his appetite.'
+	},
+	{
+		id: 'seed_don_r05',
+		campaignId: 'seed_camp_ruby_duke',
+		donorUserId: 'seed_james',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 2000,
+		status: 'CANCELLED',
+		provider: 'SIMULATED',
+		message: 'Double-clicked by accident.'
+	},
+	{
+		id: 'seed_don_g01',
+		campaignId: 'seed_camp_ghost',
+		donorUserId: 'seed_james',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 5000,
+		status: 'PENDING',
+		provider: 'SIMULATED',
+		message: 'Waiting on approval, sending early.'
+	},
+	{
+		id: 'seed_don_s01',
+		campaignId: 'seed_camp_senior_cat',
+		donorUserId: null,
+		donorName: 'Neighborhood Book Club',
+		isAnonymous: false,
+		amountCents: 35000,
+		status: 'COMPLETED',
+		provider: 'CHECK',
+		message: 'In honor of Miso.'
+	},
+	{
+		id: 'seed_don_s02',
+		campaignId: 'seed_camp_senior_cat',
+		donorUserId: 'seed_maria',
+		donorName: null,
+		isAnonymous: false,
+		amountCents: 10000,
+		status: 'COMPLETED',
+		provider: 'MANUAL',
+		message: 'She deserved every bit of sunshine.'
+	},
+	{
+		id: 'seed_don_s03',
+		campaignId: 'seed_camp_senior_cat',
+		donorUserId: null,
+		donorName: 'Anonymous',
+		isAnonymous: true,
+		amountCents: 15000,
+		status: 'REFUNDED',
+		provider: 'SIMULATED',
+		message: null
+	}
 ];
 
 // ---------------------------------------------------------------------------
@@ -1295,12 +1792,54 @@ export interface SeedReview {
 }
 
 export const seedReviews: SeedReview[] = [
-	{ id: 'seed_review_bella_1', campaignId: 'seed_camp_bella', reviewerId: 'seed_mod', decision: 'CHANGES_REQUESTED', reason: 'Please attach the signed surgical estimate before we can approve.', createdAt: daysAgo(21) },
-	{ id: 'seed_review_bella_2', campaignId: 'seed_camp_bella', reviewerId: 'seed_mod', decision: 'APPROVED', reason: 'Invoice verified against Veterinary Emergency & Specialty of Tidewater. Approved.', createdAt: daysAgo(20) },
-	{ id: 'seed_review_max_1', campaignId: 'seed_camp_max', reviewerId: 'seed_mod', decision: 'APPROVED', reason: 'Receipt looks legitimate. Approved.', createdAt: daysAgo(15) },
-	{ id: 'seed_review_whiskers_1', campaignId: 'seed_camp_whiskers', reviewerId: 'seed_mod', decision: 'APPROVED', reason: 'Anonymous owner request honored; invoice verified.', createdAt: daysAgo(10) },
-	{ id: 'seed_review_puppies_1', campaignId: 'seed_camp_ruby_duke', reviewerId: 'seed_mod', decision: 'APPROVED', reason: 'Approved. Invoice matches the Chesapeake Animal Hospital account.', createdAt: daysAgo(12) },
-	{ id: 'seed_review_senior_1', campaignId: 'seed_camp_senior_cat', reviewerId: 'seed_mod', decision: 'APPROVED', reason: 'Approved at publish time.', createdAt: daysAgo(120) }
+	{
+		id: 'seed_review_bella_1',
+		campaignId: 'seed_camp_bella',
+		reviewerId: 'seed_mod',
+		decision: 'CHANGES_REQUESTED',
+		reason: 'Please attach the signed surgical estimate before we can approve.',
+		createdAt: daysAgo(21)
+	},
+	{
+		id: 'seed_review_bella_2',
+		campaignId: 'seed_camp_bella',
+		reviewerId: 'seed_mod',
+		decision: 'APPROVED',
+		reason: 'Invoice verified against Veterinary Emergency & Specialty of Tidewater. Approved.',
+		createdAt: daysAgo(20)
+	},
+	{
+		id: 'seed_review_max_1',
+		campaignId: 'seed_camp_max',
+		reviewerId: 'seed_mod',
+		decision: 'APPROVED',
+		reason: 'Receipt looks legitimate. Approved.',
+		createdAt: daysAgo(15)
+	},
+	{
+		id: 'seed_review_whiskers_1',
+		campaignId: 'seed_camp_whiskers',
+		reviewerId: 'seed_mod',
+		decision: 'APPROVED',
+		reason: 'Anonymous owner request honored; invoice verified.',
+		createdAt: daysAgo(10)
+	},
+	{
+		id: 'seed_review_puppies_1',
+		campaignId: 'seed_camp_ruby_duke',
+		reviewerId: 'seed_mod',
+		decision: 'APPROVED',
+		reason: 'Approved. Invoice matches the Chesapeake Animal Hospital account.',
+		createdAt: daysAgo(12)
+	},
+	{
+		id: 'seed_review_senior_1',
+		campaignId: 'seed_camp_senior_cat',
+		reviewerId: 'seed_mod',
+		decision: 'APPROVED',
+		reason: 'Approved at publish time.',
+		createdAt: daysAgo(120)
+	}
 ];
 
 // ---------------------------------------------------------------------------

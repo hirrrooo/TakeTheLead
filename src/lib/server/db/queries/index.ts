@@ -5,7 +5,7 @@
  * in one place.
  */
 import { db } from '$lib/server/db';
-import type { Prisma } from '../../../../../generated/prisma/client';
+import type { Prisma } from '../../../../generated/prisma/client';
 import type {
 	CampaignStatus,
 	DonationProvider,

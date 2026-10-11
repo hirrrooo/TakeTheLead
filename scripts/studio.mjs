@@ -1,6 +1,6 @@
 /**
  * Launcher for `prisma studio`.
- * Prisma 7 rejects relative SQLite URLs ("file:local.db") in Studio, so we
+ * Prisma 7 rejects relative SQLite URLs ("file:./prisma/dev.db") in Studio, so we
  * resolve DATABASE_URL against the project root and pass an absolute
  * file:// URL via --url. Works for any teammate's checkout location.
  */
@@ -22,6 +22,12 @@ if (raw.startsWith('file:')) {
 	url = pathToFileURL(resolve(process.cwd(), rel)).href;
 }
 
-const args = [createRequire(import.meta.url).resolve('prisma/build/index.js'), 'studio', '--url', url, ...process.argv.slice(2)];
+const args = [
+	createRequire(import.meta.url).resolve('prisma/build/index.js'),
+	'studio',
+	'--url',
+	url,
+	...process.argv.slice(2)
+];
 const child = spawn(process.execPath, args, { stdio: 'inherit' });
 child.on('exit', (code) => process.exit(code ?? 0));

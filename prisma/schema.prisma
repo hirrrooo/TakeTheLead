@@ -3,10 +3,13 @@
 //
 // Naming follows the Cycle-2/3 plan codes (TTL-208): the fundraising unit is a
 // Campaign and the care provider is a VetHospital. Money is always Int cents.
+//
+// SQLite has no native enums: every "enum" below is a String whose allowed
+// values are declared as TS unions in src/lib/server/db/enums.ts.
 
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -16,15 +19,15 @@ datasource db {
 // ---------- Better Auth models ----------
 
 model User {
-  id            String   @id
-  name          String
+  id            String   @id @default(cuid())
   email         String   @unique
+  name          String?
   emailVerified Boolean  @default(false)
   image         String?
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  // ---- TakeTheLead app fields (register in auth.ts user.additionalFields) ----
+  // ---- TakeTheLead app fields (registered in auth.ts user.additionalFields) ----
   isModerator Boolean @default(false) /// gates the campaign review queue
   isSystem    Boolean @default(false) /// seeded orphan owner, excluded from user lists
 
@@ -44,7 +47,7 @@ model User {
   uploadedVetRecords    VetRecord[]      @relation("VetRecordUploaded")
   acceptedPromiseToPays PromiseToPay[]
 
-  @@map("user")
+  @@map("users")
 }
 
 model Session {
@@ -52,7 +55,7 @@ model Session {
   expiresAt DateTime
   token     String   @unique
   createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   ipAddress String?
   userAgent String?
   userId    String
@@ -75,7 +78,7 @@ model Account {
   scope                 String?
   password              String?
   createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@map("account")
 }
@@ -85,7 +88,7 @@ model Verification {
   value          String
   expiresAt      DateTime
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   identifier     String
   idempotencyKey String?
 
@@ -93,8 +96,6 @@ model Verification {
 }
 
 // ---------- TakeTheLead app models ----------
-// SQLite has no native enums: every "enum" below is a String whose allowed
-// values are declared as TS unions in src/lib/server/db/enums.ts.
 // Money is always Int cents; never Float.
 
 model Pet {
@@ -128,7 +129,7 @@ model Campaign {
   coverImageUrl String?
 
   /// DRAFT | PENDING_REVIEW | APPROVED | REJECTED | CLOSED | ARCHIVED
-  status     String @default("DRAFT")
+  status String @default("DRAFT")
   /// PUBLIC | UNLISTED | PRIVATE
   visibility String @default("PUBLIC")
 
@@ -154,7 +155,7 @@ model Campaign {
   publishedAt DateTime?
   closedAt    DateTime?
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   pets         CampaignPet[]
@@ -175,8 +176,8 @@ model CampaignPet {
   campaignId String
   petId      String
   /// PRIMARY | SECONDARY
-  role       String   @default("PRIMARY")
-  createdAt  DateTime @default(now())
+  role      String   @default("PRIMARY")
+  createdAt DateTime @default(now())
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   pet      Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
@@ -190,9 +191,9 @@ model CampaignMember {
   campaignId String
   userId     String
   /// OWNER | MANAGER | VIEWER
-  role       String @default("MANAGER")
+  role   String @default("MANAGER")
   /// PENDING | ACCEPTED | DECLINED | REVOKED
-  status     String @default("PENDING")
+  status String @default("PENDING")
 
   invitedById String?
   invitedBy   User?   @relation("MemberInvites", fields: [invitedById], references: [id], onDelete: SetNull)
@@ -300,7 +301,7 @@ model VetHospital {
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   campaigns  Campaign[]
@@ -325,7 +326,7 @@ model VetRecord {
   title         String
   amountCents   Int?
   invoiceNumber String?
-  documentUrl   String? /// private R2 storage, signed URLs only
+  documentUrl   String? /// private object storage, signed URLs only
 
   isVerified   Boolean @default(false)
   verifiedById String?
@@ -356,7 +357,7 @@ model FundingSource {
   /// GRANT | CHARITY | LOW_COST_CARE | PAYMENT_PLAN | CREDIT | INSURANCE | SHELTER_PROGRAM
   category String
   /// NATIONAL | VIRGINIA | HAMPTON_ROADS
-  scope    String @default("NATIONAL")
+  scope String @default("NATIONAL")
 
   species     String /// "Dogs, Cats"
   conditions  String /// what it helps pay for
@@ -381,7 +382,7 @@ model FundingSource {
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   retiredAt DateTime? /// kept for history, hidden from matching
 
   @@index([category, scope])
@@ -411,7 +412,7 @@ model PromiseToPay {
 
   termsVersion String   @default("2026-10")
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([accepted])
   @@map("promise_to_pay")

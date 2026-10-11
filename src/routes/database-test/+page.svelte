@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -45,14 +46,16 @@
 		<h1 class="text-2xl font-semibold">Database test</h1>
 		<p class="max-w-3xl text-slate-600">
 			Every TakeTheLead database interaction in one place, for templating and manual verification
-			(TTL-208). Reads go straight to Prisma; <em>every write goes through the guarded helpers in</em>
-			<code class="rounded bg-slate-100 px-1">src/lib/server/db/queries</code>, so the rejections below are
-			the real rules the app will enforce. Nothing here is authenticated — pick the demo user each action
-			runs as instead.
+			(TTL-208). Reads go straight to Prisma; <em
+				>every write goes through the guarded helpers in</em
+			>
+			<code class="rounded bg-slate-100 px-1">src/lib/server/db/queries</code>, so the rejections
+			below are the real rules the app will enforce. Nothing here is authenticated — pick the demo
+			user each action runs as instead.
 		</p>
 		<p class="text-xs text-slate-500">
-			Reset everything with <code class="rounded bg-slate-100 px-1">npm run db:reset</code>. Demo logins use
-			the password in <code class="rounded bg-slate-100 px-1">prisma/seed-data.ts</code>.
+			Reset everything with <code class="rounded bg-slate-100 px-1">npm run db:reset</code>. Demo
+			logins use the password in <code class="rounded bg-slate-100 px-1">prisma/seed-data.ts</code>.
 		</p>
 	</header>
 
@@ -61,13 +64,14 @@
 		<h2 class="text-lg font-semibold">1. Vet hospitals — ZIP search</h2>
 		<p class="text-slate-600">
 			The TTL-206 lookup: filter by ZIP prefix and species, always-open hospitals first. Try
-			<code class="rounded bg-slate-100 px-1">234</code>, <code class="rounded bg-slate-100 px-1">23320</code>,
-			or species <code class="rounded bg-slate-100 px-1">Exotics</code>.
+			<code class="rounded bg-slate-100 px-1">234</code>,
+			<code class="rounded bg-slate-100 px-1">23320</code>, or species
+			<code class="rounded bg-slate-100 px-1">Exotics</code>.
 		</p>
 
 		<form method="get" class="flex flex-wrap items-end gap-3">
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">ZIP</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">ZIP</span>
 				<input
 					name="zip"
 					value={data.zip}
@@ -76,7 +80,8 @@
 				/>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Species</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">Species</span
+				>
 				<input
 					name="species"
 					value={data.species}
@@ -84,11 +89,10 @@
 					class="w-32 rounded border border-slate-300 px-2 py-1"
 				/>
 			</label>
-			<button
-				class="rounded bg-slate-900 px-3 py-1.5 text-white hover:bg-slate-700"
-			>Search</button>
-			<a href="/database-test" class="rounded border border-slate-300 px-3 py-1.5 hover:bg-slate-100"
-				>Clear</a
+			<button class="rounded bg-slate-900 px-3 py-1.5 text-white hover:bg-slate-700">Search</button>
+			<a
+				href={resolve('/database-test')}
+				class="rounded border border-slate-300 px-3 py-1.5 hover:bg-slate-100">Clear</a
 			>
 		</form>
 
@@ -96,7 +100,7 @@
 
 		<div class="overflow-x-auto rounded border border-slate-200">
 			<table class="w-full text-left align-top">
-				<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+				<thead class="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
 					<tr>
 						<th class="p-2">Hospital</th>
 						<th class="p-2">ZIP</th>
@@ -112,8 +116,11 @@
 						<tr class="border-t border-slate-100">
 							<td class="p-2">
 								{#if h.website}
-									<a class="text-blue-700 underline" href={h.website} rel="noopener" target="_blank"
-										>{h.name}</a
+									<a
+										class="text-blue-700 underline"
+										href={h.website}
+										rel="external noopener"
+										target="_blank">{h.name}</a
 									>
 								{:else}
 									{h.name}
@@ -123,9 +130,14 @@
 							<td class="p-2 font-mono">{h.postalCode}</td>
 							<td class="p-2 font-mono">{h.phone}</td>
 							<td class="p-2">
-								{#if h.is24Hour}<span class="mr-1 rounded bg-red-100 px-1 text-red-800">24/7</span>{/if}
-								{#if h.isEmergency}<span class="mr-1 rounded bg-amber-100 px-1 text-amber-800">ER</span>{/if}
-								{#if h.isLowCost}<span class="rounded bg-emerald-100 px-1 text-emerald-800">low-cost</span>{/if}
+								{#if h.is24Hour}<span class="mr-1 rounded bg-red-100 px-1 text-red-800">24/7</span
+									>{/if}
+								{#if h.isEmergency}<span class="mr-1 rounded bg-amber-100 px-1 text-amber-800"
+										>ER</span
+									>{/if}
+								{#if h.isLowCost}<span class="rounded bg-emerald-100 px-1 text-emerald-800"
+										>low-cost</span
+									>{/if}
 							</td>
 							<td class="p-2 text-xs text-slate-600">{h.emergencyHours ?? '—'}</td>
 							<td class="p-2">{h.priceTier}</td>
@@ -133,7 +145,8 @@
 						</tr>
 					{:else}
 						<tr>
-							<td class="p-3 text-slate-500" colspan={7}>No hospitals match that ZIP or species.</td>
+							<td class="p-3 text-slate-500" colspan={7}>No hospitals match that ZIP or species.</td
+							>
 						</tr>
 					{/each}
 				</tbody>
@@ -145,7 +158,9 @@
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">2. Funding sources — verified directory</h2>
 		<p class="text-slate-600">
-			11 starter sources plus 4 added, each with <code class="rounded bg-slate-100 px-1">verifiedAt</code>
+			11 starter sources plus 4 added, each with <code class="rounded bg-slate-100 px-1"
+				>verifiedAt</code
+			>
 			set only after the link was actually loaded. Re-check them with
 			<code class="rounded bg-slate-100 px-1">npm run db:check-links</code>.
 		</p>
@@ -154,10 +169,12 @@
 			<input type="hidden" name="zip" value={data.zip} />
 			<input type="hidden" name="species" value={data.species} />
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Scope</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">Scope</span>
 				<select name="scope" class="rounded border border-slate-300 px-2 py-1">
 					<option value="" selected={data.scope === ''}>All</option>
-					<option value="HAMPTON_ROADS" selected={data.scope === 'HAMPTON_ROADS'}>Hampton Roads</option>
+					<option value="HAMPTON_ROADS" selected={data.scope === 'HAMPTON_ROADS'}
+						>Hampton Roads</option
+					>
 					<option value="VIRGINIA" selected={data.scope === 'VIRGINIA'}>Virginia</option>
 					<option value="NATIONAL" selected={data.scope === 'NATIONAL'}>National</option>
 				</select>
@@ -171,10 +188,13 @@
 			{#each data.fundingSources as f (f.id)}
 				<li class="space-y-1 rounded border border-slate-200 p-3">
 					<div class="flex items-start justify-between gap-2">
-						<a class="font-medium text-blue-700 underline" href={f.url} rel="noopener" target="_blank"
-							>{f.name}</a
+						<a
+							class="font-medium text-blue-700 underline"
+							href={f.url}
+							rel="external noopener"
+							target="_blank">{f.name}</a
 						>
-						<span class="whitespace-nowrap rounded bg-slate-100 px-1.5 text-xs">{f.scope}</span>
+						<span class="rounded bg-slate-100 px-1.5 text-xs whitespace-nowrap">{f.scope}</span>
 					</div>
 					<div class="text-xs text-slate-500">
 						{f.category} · {f.species} · cap: {f.maxAwardNote ?? 'no published cap'}
@@ -203,12 +223,12 @@
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">3. Campaigns — state matrix</h2>
 		<p class="text-slate-600">
-			<code class="rounded bg-slate-100 px-1">raisedCents</code> is a cache; the value shown is read from the
-			row, and section 7 proves it equals the sum of COMPLETED donations.
+			<code class="rounded bg-slate-100 px-1">raisedCents</code> is a cache; the value shown is read from
+			the row, and section 7 proves it equals the sum of COMPLETED donations.
 		</p>
 		<div class="overflow-x-auto rounded border border-slate-200">
 			<table class="w-full text-left">
-				<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+				<thead class="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
 					<tr>
 						<th class="p-2">Campaign</th>
 						<th class="p-2">Status</th>
@@ -252,9 +272,9 @@
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">4. Donations — write and transition</h2>
 		<p class="text-slate-600">
-			<code class="rounded bg-slate-100 px-1">recordDonation</code> refuses non-APPROVED campaigns and guest
-			donations where they are not allowed, then recomputes the cache in the same transaction. Try donating
-			to the PENDING_REVIEW campaign to see the refusal.
+			<code class="rounded bg-slate-100 px-1">recordDonation</code> refuses non-APPROVED campaigns and
+			guest donations where they are not allowed, then recomputes the cache in the same transaction. Try
+			donating to the PENDING_REVIEW campaign to see the refusal.
 		</p>
 
 		{#if donationFlash}
@@ -263,7 +283,8 @@
 					? 'border-emerald-300 bg-emerald-50 text-emerald-900'
 					: 'border-rose-300 bg-rose-50 text-rose-900'}"
 			>
-				<strong>{donationFlash.title}.</strong> {donationFlash.detail}
+				<strong>{donationFlash.title}.</strong>
+				{donationFlash.detail}
 			</p>
 		{/if}
 
@@ -274,7 +295,9 @@
 			class="grid gap-3 rounded border border-slate-200 p-3 md:grid-cols-4"
 		>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Campaign</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Campaign</span
+				>
 				<select name="campaignId" class="w-full rounded border border-slate-300 px-2 py-1">
 					{#each data.campaigns as c (c.id)}
 						<option value={c.id}>{c.status} · {c.title}</option>
@@ -282,7 +305,9 @@
 				</select>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Amount $</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Amount $</span
+				>
 				<input
 					name="amount"
 					value="25"
@@ -291,14 +316,16 @@
 				/>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Donor</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">Donor</span>
 				<select name="donorMode" class="w-full rounded border border-slate-300 px-2 py-1">
 					<option value="guest">Guest (starts PENDING)</option>
 					<option value="user">Registered (starts COMPLETED)</option>
 				</select>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Acting as</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Acting as</span
+				>
 				<select name="asUser" class="w-full rounded border border-slate-300 px-2 py-1">
 					{#each data.actionUsers as u (u)}
 						<option value={u}>{u}</option>
@@ -306,7 +333,9 @@
 				</select>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Guest name</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Guest name</span
+				>
 				<input
 					name="donorName"
 					placeholder="Grace L."
@@ -314,7 +343,8 @@
 				/>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Message</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">Message</span
+				>
 				<input
 					name="message"
 					placeholder="optional"
@@ -335,9 +365,16 @@
 		<div class="grid gap-4 md:grid-cols-2">
 			<div class="space-y-2">
 				<h3 class="font-medium">Status transition</h3>
-				<form method="post" action="?/transition" use:enhance class="flex flex-wrap items-end gap-2">
+				<form
+					method="post"
+					action="?/transition"
+					use:enhance
+					class="flex flex-wrap items-end gap-2"
+				>
 					<label class="space-y-1">
-						<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Donation</span>
+						<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+							>Donation</span
+						>
 						<select name="donationId" class="rounded border border-slate-300 px-2 py-1">
 							{#each data.recentDonations as d (d.id)}
 								<option value={d.id}>
@@ -347,14 +384,16 @@
 						</select>
 					</label>
 					<label class="space-y-1">
-						<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">To</span>
+						<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">To</span>
 						<select name="status" class="rounded border border-slate-300 px-2 py-1">
 							{#each ['COMPLETED', 'PENDING', 'FAILED', 'REFUNDED', 'CANCELLED'] as s (s)}
 								<option value={s}>{s}</option>
 							{/each}
 						</select>
 					</label>
-					<button class="rounded bg-slate-900 px-3 py-1.5 text-white hover:bg-slate-700">Apply</button>
+					<button class="rounded bg-slate-900 px-3 py-1.5 text-white hover:bg-slate-700"
+						>Apply</button
+					>
 				</form>
 			</div>
 
@@ -379,10 +418,10 @@
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">5. Access control</h2>
 		<p class="text-slate-600">
-			<code class="rounded bg-slate-100 px-1">requireCampaignAccess</code> accepts ACCEPTED OWNER or MANAGER
-			only. <code class="rounded bg-slate-100 px-1">requireCampaignOwner</code> is stricter — a co-manager
-			fails. Try <code class="rounded bg-slate-100 px-1">seed_james</code> on “Bella Needs ACL Surgery”: he is
-			a MANAGER, so access passes but ownership does not.
+			<code class="rounded bg-slate-100 px-1">requireCampaignAccess</code> accepts ACCEPTED OWNER or
+			MANAGER only. <code class="rounded bg-slate-100 px-1">requireCampaignOwner</code> is stricter
+			— a co-manager fails. Try <code class="rounded bg-slate-100 px-1">seed_james</code> on “Bella Needs
+			ACL Surgery”: he is a MANAGER, so access passes but ownership does not.
 		</p>
 
 		{#if accessFlash}
@@ -391,14 +430,22 @@
 					? 'border-emerald-300 bg-emerald-50 text-emerald-900'
 					: 'border-rose-300 bg-rose-50 text-rose-900'}"
 			>
-				<strong>{accessFlash.title}.</strong> {accessFlash.detail}
+				<strong>{accessFlash.title}.</strong>
+				{accessFlash.detail}
 			</p>
 		{/if}
 
 		<div class="grid gap-3 md:grid-cols-2">
-			<form method="post" action="?/access" use:enhance class="flex flex-wrap items-end gap-2 rounded border border-slate-200 p-3">
+			<form
+				method="post"
+				action="?/access"
+				use:enhance
+				class="flex flex-wrap items-end gap-2 rounded border border-slate-200 p-3"
+			>
 				<label class="space-y-1">
-					<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Campaign</span>
+					<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+						>Campaign</span
+					>
 					<select name="campaignId" class="rounded border border-slate-300 px-2 py-1">
 						{#each data.campaigns as c (c.id)}
 							<option value={c.id}>{c.title}</option>
@@ -406,7 +453,7 @@
 					</select>
 				</label>
 				<label class="space-y-1">
-					<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">User</span>
+					<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">User</span>
 					<select name="asUser" class="rounded border border-slate-300 px-2 py-1">
 						{#each data.actionUsers as u (u)}
 							<option value={u}>{u}</option>
@@ -418,9 +465,16 @@
 				</button>
 			</form>
 
-			<form method="post" action="?/owner" use:enhance class="flex flex-wrap items-end gap-2 rounded border border-slate-200 p-3">
+			<form
+				method="post"
+				action="?/owner"
+				use:enhance
+				class="flex flex-wrap items-end gap-2 rounded border border-slate-200 p-3"
+			>
 				<label class="space-y-1">
-					<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Campaign</span>
+					<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+						>Campaign</span
+					>
 					<select name="campaignId" class="rounded border border-slate-300 px-2 py-1">
 						{#each data.campaigns as c (c.id)}
 							<option value={c.id}>{c.title}</option>
@@ -428,7 +482,7 @@
 					</select>
 				</label>
 				<label class="space-y-1">
-					<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">User</span>
+					<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">User</span>
 					<select name="asUser" class="rounded border border-slate-300 px-2 py-1">
 						{#each data.actionUsers as u (u)}
 							<option value={u}>{u}</option>
@@ -446,11 +500,11 @@
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">6. Promise to pay and moderation (TTL-211)</h2>
 		<p class="text-slate-600">
-			Two invariants: the money must add up
-			(<code class="rounded bg-slate-100 px-1">ttlCovers + ownerMax = bill</code>), and a campaign cannot be
-			APPROVED until its owner has accepted the terms. The seeded “Ghost” campaign deliberately has an
-			unaccepted promise — approve it as <code class="rounded bg-slate-100 px-1">seed_mod</code> and watch it
-			get refused.
+			Two invariants: the money must add up (<code class="rounded bg-slate-100 px-1"
+				>ttlCovers + ownerMax = bill</code
+			>), and a campaign cannot be APPROVED until its owner has accepted the terms. The seeded
+			“Ghost” campaign deliberately has an unaccepted promise — approve it as
+			<code class="rounded bg-slate-100 px-1">seed_mod</code> and watch it get refused.
 		</p>
 
 		{#if promiseFlash}
@@ -459,7 +513,8 @@
 					? 'border-emerald-300 bg-emerald-50 text-emerald-900'
 					: 'border-rose-300 bg-rose-50 text-rose-900'}"
 			>
-				<strong>{promiseFlash.title}.</strong> {promiseFlash.detail}
+				<strong>{promiseFlash.title}.</strong>
+				{promiseFlash.detail}
 			</p>
 		{/if}
 
@@ -470,7 +525,9 @@
 			class="grid gap-3 rounded border border-slate-200 p-3 md:grid-cols-4"
 		>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Campaign</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Campaign</span
+				>
 				<select name="campaignId" class="w-full rounded border border-slate-300 px-2 py-1">
 					{#each data.campaigns as c (c.id)}
 						<option value={c.id}>{c.promiseAccepted ? '✓' : '✗'} {c.title}</option>
@@ -478,7 +535,9 @@
 				</select>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Owner (must be OWNER)</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Owner (must be OWNER)</span
+				>
 				<select name="asUser" class="w-full rounded border border-slate-300 px-2 py-1">
 					{#each data.actionUsers as u (u)}
 						<option value={u}>{u}</option>
@@ -486,7 +545,7 @@
 				</select>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Bill $</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">Bill $</span>
 				<input
 					bind:value={promiseBill}
 					name="billAmount"
@@ -495,7 +554,9 @@
 				/>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">TakeTheLead covers $</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>TakeTheLead covers $</span
+				>
 				<input
 					bind:value={promiseTtl}
 					name="ttlCovers"
@@ -504,7 +565,9 @@
 				/>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Owner owes at most $</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Owner owes at most $</span
+				>
 				<input
 					bind:value={promiseOwner}
 					name="ownerMax"
@@ -513,7 +576,7 @@
 				/>
 			</label>
 			<label class="space-y-1 md:col-span-3">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">
 					Plain-language: what TakeTheLead pays
 				</span>
 				<input
@@ -523,7 +586,7 @@
 				/>
 			</label>
 			<label class="space-y-1 md:col-span-3">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">
 					Plain-language: what you owe
 				</span>
 				<input
@@ -552,7 +615,8 @@
 					? 'border-emerald-300 bg-emerald-50 text-emerald-900'
 					: 'border-rose-300 bg-rose-50 text-rose-900'}"
 			>
-				<strong>{moderationFlash.title}.</strong> {moderationFlash.detail}
+				<strong>{moderationFlash.title}.</strong>
+				{moderationFlash.detail}
 			</p>
 		{/if}
 
@@ -563,7 +627,9 @@
 			class="grid gap-3 rounded border border-slate-200 p-3 md:grid-cols-4"
 		>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Campaign</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Campaign</span
+				>
 				<select name="campaignId" class="w-full rounded border border-slate-300 px-2 py-1">
 					{#each data.campaigns as c (c.id)}
 						<option value={c.id}>{c.status} · {c.title}</option>
@@ -571,7 +637,9 @@
 				</select>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Reviewer</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Reviewer</span
+				>
 				<select name="asUser" class="w-full rounded border border-slate-300 px-2 py-1">
 					{#each data.actionUsers as u (u)}
 						<option value={u} selected={u === 'seed_mod'}>{u}</option>
@@ -579,7 +647,9 @@
 				</select>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Decision</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase"
+					>Decision</span
+				>
 				<select name="decision" class="w-full rounded border border-slate-300 px-2 py-1">
 					{#each ['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as d (d)}
 						<option value={d}>{d}</option>
@@ -587,7 +657,7 @@
 				</select>
 			</label>
 			<label class="space-y-1">
-				<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Reason</span>
+				<span class="block text-xs font-medium tracking-wide text-slate-500 uppercase">Reason</span>
 				<input
 					name="reason"
 					placeholder="optional"
@@ -606,8 +676,8 @@
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">7. raisedCents consistency</h2>
 		<p class="text-slate-600">
-			The cache must always equal SUM(COMPLETED donations). If a row disagrees, something wrote around the
-			query layer.
+			The cache must always equal SUM(COMPLETED donations). If a row disagrees, something wrote
+			around the query layer.
 		</p>
 
 		{#if recomputeFlash}
@@ -616,13 +686,14 @@
 					? 'border-emerald-300 bg-emerald-50 text-emerald-900'
 					: 'border-rose-300 bg-rose-50 text-rose-900'}"
 			>
-				<strong>{recomputeFlash.title}.</strong> {recomputeFlash.detail}
+				<strong>{recomputeFlash.title}.</strong>
+				{recomputeFlash.detail}
 			</p>
 		{/if}
 
 		<div class="overflow-x-auto rounded border border-slate-200">
 			<table class="w-full text-left">
-				<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+				<thead class="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
 					<tr>
 						<th class="p-2">Campaign</th>
 						<th class="p-2">Cached</th>
@@ -660,7 +731,7 @@
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">8. Demo users</h2>
 		<table class="w-full text-left">
-			<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+			<thead class="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
 				<tr>
 					<th class="p-2">id</th>
 					<th class="p-2">Name</th>

@@ -1,7 +1,7 @@
 /**
  * TakeTheLead demo seed (TTL-208).
  *
- * This file contains NO data — every row lives in `seed-data.ts`. Its only job
+ * This file contains NO data â€” every row lives in `seed-data.ts`. Its only job
  * is to apply that data to the database safely:
  *
  *   npm run db:seed
@@ -23,9 +23,9 @@
  */
 import 'dotenv/config';
 import { createHash } from 'node:crypto';
-import { PrismaLibSql } from '@prisma/adapter-libsql';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import { hashPassword } from 'better-auth/crypto';
-import { PrismaClient } from '../generated/prisma/client.ts';
+import { PrismaClient } from '../src/generated/prisma/client.ts';
 import {
 	SEED_PASSWORD,
 	CHECKED_AT,
@@ -44,9 +44,9 @@ import {
 	seedVetRecords
 } from './seed-data.ts';
 
-const url = process.env.DATABASE_URL;
-if (!url) throw new Error('DATABASE_URL is not set (check .env)');
-const db = new PrismaClient({ adapter: new PrismaLibSql({ url }) });
+// Same default as prisma7.config.ts so `npm run db:seed` works without a .env.
+const url = process.env.DATABASE_URL ?? 'file:./prisma/dev.db';
+const db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
 
 /** Deterministic fake provider refs so re-runs do not collide on @unique. */
 const ref = (name: string) => createHash('sha1').update(name).digest('hex').slice(0, 16);
@@ -209,7 +209,11 @@ async function seedCampaignLinks(): Promise<number> {
 		});
 	}
 	for (const img of seedImages) {
-		await db.campaignImage.upsert({ where: { id: img.id }, update: { ...img }, create: { ...img } });
+		await db.campaignImage.upsert({
+			where: { id: img.id },
+			update: { ...img },
+			create: { ...img }
+		});
 	}
 	return seedCampaignPets.length + seedMembers.length + seedImages.length;
 }
@@ -298,11 +302,15 @@ async function pruneRemovedDemoRows(): Promise<number> {
 		where: { id: { startsWith: 'seed_', not: { in: campaignIds } } }
 	});
 	const results = await Promise.all([
-		db.vetHospital.deleteMany({ where: { id: { startsWith: 'seed_', not: { in: seedHospitals.map((h) => h.id) } } } }),
+		db.vetHospital.deleteMany({
+			where: { id: { startsWith: 'seed_', not: { in: seedHospitals.map((h) => h.id) } } }
+		}),
 		db.fundingSource.deleteMany({
 			where: { id: { startsWith: 'seed_', not: { in: seedFundingSources.map((f) => f.id) } } }
 		}),
-		db.pet.deleteMany({ where: { id: { startsWith: 'seed_', not: { in: seedPets.map((p) => p.id) } } } }),
+		db.pet.deleteMany({
+			where: { id: { startsWith: 'seed_', not: { in: seedPets.map((p) => p.id) } } }
+		}),
 		db.campaignImage.deleteMany({
 			where: { id: { startsWith: 'seed_', not: { in: seedImages.map((i) => i.id) } } }
 		}),
@@ -328,16 +336,17 @@ async function pruneRemovedDemoRows(): Promise<number> {
 
 async function report(): Promise<void> {
 	const seeded = { id: { startsWith: 'seed_' } };
-	const [users, hospitals, funding, pets, campaigns, donations, promises, reviews] = await Promise.all([
-		db.user.count({ where: { id: { in: seedUsers.map((u) => u.id) } } }),
-		db.vetHospital.count({ where: seeded }),
-		db.fundingSource.count({ where: seeded }),
-		db.pet.count({ where: seeded }),
-		db.campaign.count({ where: seeded }),
-		db.donation.count({ where: seeded }),
-		db.promiseToPay.count({ where: { accepted: true, campaignId: { startsWith: 'seed_' } } }),
-		db.campaignReview.count({ where: seeded })
-	]);
+	const [users, hospitals, funding, pets, campaigns, donations, promises, reviews] =
+		await Promise.all([
+			db.user.count({ where: { id: { in: seedUsers.map((u) => u.id) } } }),
+			db.vetHospital.count({ where: seeded }),
+			db.fundingSource.count({ where: seeded }),
+			db.pet.count({ where: seeded }),
+			db.campaign.count({ where: seeded }),
+			db.donation.count({ where: seeded }),
+			db.promiseToPay.count({ where: { accepted: true, campaignId: { startsWith: 'seed_' } } }),
+			db.campaignReview.count({ where: seeded })
+		]);
 	const [emergency, lowCost, local] = await Promise.all([
 		db.vetHospital.count({ where: { ...seeded, isEmergency: true } }),
 		db.vetHospital.count({ where: { ...seeded, isLowCost: true } }),

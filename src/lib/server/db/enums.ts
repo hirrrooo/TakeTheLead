@@ -70,4 +70,3 @@ export type FundingCategory = (typeof FUNDING_CATEGORY)[number];
 
 export const FUNDING_SCOPE = ['NATIONAL', 'VIRGINIA', 'HAMPTON_ROADS'] as const;
 export type FundingScope = (typeof FUNDING_SCOPE)[number];
-

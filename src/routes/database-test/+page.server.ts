@@ -73,7 +73,13 @@ async function checkRaisedCents() {
 	const rows = await Promise.all(
 		campaigns.map(async (c) => {
 			const actual = await computeRaisedCents(db, c.id);
-			return { id: c.id, slug: c.slug, cached: c.raisedCents, actual, ok: c.raisedCents === actual };
+			return {
+				id: c.id,
+				slug: c.slug,
+				cached: c.raisedCents,
+				actual,
+				ok: c.raisedCents === actual
+			};
 		})
 	);
 	return { allOk: rows.every((r) => r.ok), rows };
@@ -243,7 +249,8 @@ export const actions: Actions = {
 				provider: 'SIMULATED',
 				providerRef: `test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
 				donorUserId: donorMode === 'user' ? asUser : null,
-				donorName: donorMode === 'guest' ? String(form.get('donorName') ?? '').trim() || 'Anonymous' : null,
+				donorName:
+					donorMode === 'guest' ? String(form.get('donorName') ?? '').trim() || 'Anonymous' : null,
 				isAnonymous: form.get('isAnonymous') === 'on',
 				message: String(form.get('message') ?? '').trim() || null
 			});

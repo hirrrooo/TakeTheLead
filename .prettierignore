@@ -1,0 +1,14 @@
+# Package Managers
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lock
+bun.lockb
+
+# Miscellaneous
+/static/
+
+# Vendored agent skill docs (contain diff markers in code samples that Prettier
+# cannot parse). Not our source; refreshed by the ai-tools add-on.
+/.github/skills/
+/.agents/
