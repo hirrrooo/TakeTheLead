@@ -26,6 +26,9 @@ test-results
 # SQLite
 *.db
 
+# Generated DB artefacts (npm run db:export-sql); safe to delete anytime
+/.db-output/
+
 # Prisma
 /generated
 
