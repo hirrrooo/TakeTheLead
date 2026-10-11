@@ -43,6 +43,9 @@ prisma/*.db
 prisma/*.db-*
 src/generated/prisma/
 
+# Generated SQL dumps / link-check reports (npm run db:clean)
+.db-output/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -57,8 +60,9 @@ build/
 out/
 coverage/
 
-# Claude Code local settings and session context
-.claude/settings.local.json
+# Claude Code and OpenCode local config / session context
+.claude/
+.opencode/
 CLAUDE.local.md
 
 # Private project documents (kept local, never pushed)
