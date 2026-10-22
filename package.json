@@ -21,7 +21,11 @@
 		"db:deploy": "prisma migrate deploy",
 		"db:generate": "prisma generate",
 		"db:seed": "prisma db seed",
-		"db:studio": "prisma studio"
+		"db:studio": "node scripts/studio.mjs",
+		"db:reset": "prisma migrate reset --force",
+		"db:export-sql": "node prisma/export-seed-sql.mjs",
+		"db:clean": "node prisma/export-seed-sql.mjs --clean",
+		"db:check-links": "node scripts/check-funding-links.mjs"
 	},
 	"prisma": {
 		"seed": "tsx prisma/seed.ts"
@@ -60,6 +64,8 @@
 		"@lucide/svelte": "^1.52.0",
 		"@prisma/adapter-better-sqlite3": "7.10.0",
 		"@prisma/client": "^7.10.0",
+		"better-auth": "^1.6.23",
+		"better-sqlite3": "^12.11.1",
 		"clsx": "^2.1.1",
 		"dotenv": "^18.0.5",
 		"prisma": "7.10.0",

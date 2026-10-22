@@ -1,3 +1,12 @@
+// Prisma schema — TakeTheLead
+// https://pris.ly/d/prisma-schema
+//
+// Naming follows the Cycle-2/3 plan codes (TTL-208): the fundraising unit is a
+// Campaign and the care provider is a VetHospital. Money is always Int cents.
+//
+// SQLite has no native enums: every "enum" below is a String whose allowed
+// values are declared as TS unions in src/lib/server/db/enums.ts.
+
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -7,12 +16,424 @@ datasource db {
   provider = "sqlite"
 }
 
+// ---------- Better Auth models ----------
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // ---- TakeTheLead app fields (registered in auth.ts user.additionalFields) ----
+  isModerator Boolean @default(false) /// gates the campaign review queue
+  isSystem    Boolean @default(false) /// seeded orphan owner, excluded from user lists
+
+  sessions Session[]
+  accounts Account[]
+
+  // ---- app relations ----
+  pets                  Pet[]
+  campaigns             Campaign[]       @relation("CampaignOwner")
+  memberships           CampaignMember[]
+  invitedMembers        CampaignMember[] @relation("MemberInvites")
+  donations             Donation[]
+  reviews               CampaignReview[]
+  createdHospitals      VetHospital[]
+  createdFundingSources FundingSource[]
+  verifiedVetRecords    VetRecord[]      @relation("VetRecordVerified")
+  uploadedVetRecords    VetRecord[]      @relation("VetRecordUploaded")
+  acceptedPromiseToPays PromiseToPay[]
 
   @@map("users")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id             String   @id
+  value          String
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  identifier     String
+  idempotencyKey String?
+
+  @@map("verification")
+}
+
+// ---------- TakeTheLead app models ----------
+// Money is always Int cents; never Float.
+
+model Pet {
+  id          String    @id @default(cuid())
+  name        String
+  species     String
+  breed       String?
+  dateOfBirth DateTime?
+  sex         String?
+  photoUrl    String?
+  bio         String?
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  campaigns CampaignPet[]
+
+  @@index([ownerId])
+  @@map("pet")
+}
+
+/// A fundraising campaign for one pet (or a household of pets).
+model Campaign {
+  id            String  @id @default(cuid())
+  slug          String  @unique
+  title         String
+  summary       String?
+  body          String
+  coverImageUrl String?
+
+  /// DRAFT | PENDING_REVIEW | APPROVED | REJECTED | CLOSED | ARCHIVED
+  status String @default("DRAFT")
+  /// PUBLIC | UNLISTED | PRIVATE
+  visibility String @default("PUBLIC")
+
+  goalAmountCents Int?
+  deadline        DateTime?
+  raisedCents     Int       @default(0) /// CACHE ONLY: sum of COMPLETED donations, updated in-transaction
+
+  /// Outstanding vet bill the campaign is raising toward (promise-to-pay screen).
+  billAmountCents Int?
+
+  allowGuestDonations Boolean @default(true)
+
+  // per-campaign presentation, NOT user identity (see plan rationale)
+  isOwnerAnonymous Boolean @default(false)
+  ownerDisplayName String?
+
+  vetHospitalId String?
+  vetHospital   VetHospital? @relation(fields: [vetHospitalId], references: [id], onDelete: SetNull)
+
+  ownerId String
+  owner   User   @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  publishedAt DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  pets         CampaignPet[]
+  members      CampaignMember[]
+  images       CampaignImage[]
+  donations    Donation[]
+  vetRecords   VetRecord[]
+  reviews      CampaignReview[]
+  promiseToPay PromiseToPay?
+
+  @@index([status, visibility, createdAt])
+  @@index([ownerId])
+  @@index([vetHospitalId])
+  @@map("campaign")
+}
+
+model CampaignPet {
+  campaignId String
+  petId      String
+  /// PRIMARY | SECONDARY
+  role      String   @default("PRIMARY")
+  createdAt DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  pet      Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@id([campaignId, petId])
+  @@index([petId])
+  @@map("campaign_pet")
+}
+
+model CampaignMember {
+  campaignId String
+  userId     String
+  /// OWNER | MANAGER | VIEWER
+  role   String @default("MANAGER")
+  /// PENDING | ACCEPTED | DECLINED | REVOKED
+  status String @default("PENDING")
+
+  invitedById String?
+  invitedBy   User?   @relation("MemberInvites", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  joinedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([campaignId, userId])
+  @@index([userId, status])
+  @@map("campaign_member")
+}
+
+model CampaignImage {
+  id        String  @id @default(cuid())
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+  widthPx   Int?
+  heightPx  Int?
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, sortOrder])
+  @@map("campaign_image")
+}
+
+model Donation {
+  id String @id @default(cuid())
+
+  donorUserId String?
+  donorUser   User?   @relation(fields: [donorUserId], references: [id], onDelete: SetNull)
+  donorName   String?
+  isAnonymous Boolean @default(false)
+
+  amountCents Int
+  currency    String @default("usd")
+  feeCents    Int    @default(0)
+
+  /// PENDING | COMPLETED | FAILED | REFUNDED | DISPUTED | CANCELLED
+  status      String  @default("PENDING")
+  /// MANUAL | SIMULATED | STRIPE | PAYPAL | CASH | CHECK
+  provider    String  @default("MANUAL")
+  providerRef String? @unique
+
+  message       String?
+  receiptNumber String?   @unique
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+  refundedAt    DateTime?
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, status])
+  @@index([donorUserId])
+  @@index([status, createdAt])
+  @@map("donation")
+}
+
+/// A veterinary hospital or low-cost clinic in the Hampton Roads directory.
+/// postalCode is the searchable ZIP (TTL-206 finds the nearest ones).
+model VetHospital {
+  id          String  @id @default(cuid())
+  name        String
+  addressLine String?
+  city        String?
+  state       String?
+  postalCode  String? /// 5-digit ZIP, e.g. "23462"
+  phone       String? /// "(757) 555-0142"
+  email       String?
+  website     String?
+
+  /// Open around the clock. "Open late" / "after-hours line" is NOT 24/7.
+  /// In Hampton Roads exactly one hospital qualifies, so do not set this loosely.
+  is24Hour Boolean @default(false)
+  /// Emergency, critical-care, or specialty referral hospital.
+  isEmergency Boolean @default(false)
+  /// Nonprofit, sliding-scale, or otherwise subsidised care.
+  isLowCost Boolean @default(false)
+  /// LOW | MODERATE | HIGH — typical cost tier shown to owners.
+  priceTier String @default("MODERATE")
+
+  /// Plain-language cover for isEmergency when the hospital is NOT 24/7,
+  /// e.g. "24 hours Fri 7AM - Wed 6PM; closed mid-week". Shown instead of a
+  /// misleading "open now" badge.
+  emergencyHours String?
+
+  speciesServed String? /// "Dogs, Cats"
+  notes         String?
+  services      String? /// comma-separated, e.g. "Surgery, Imaging, Oncology"
+
+  /// Directory hygiene: a human checked the listing's phone/ZIP/link (TTL-208).
+  isVerified    Boolean   @default(false)
+  verifiedAt    DateTime?
+  lastCheckedAt DateTime?
+
+  latitude  Float?
+  longitude Float?
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  campaigns  Campaign[]
+  vetRecords VetRecord[]
+
+  @@index([postalCode])
+  @@index([city, state])
+  @@index([name])
+  @@map("vet_hospital")
+}
+
+model VetRecord {
+  id String @id @default(cuid())
+
+  hospitalId   String?
+  hospital     VetHospital? @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
+  hospitalName String? /// free-text fallback when the hospital is not in the directory
+
+  /// ESTIMATE | INVOICE | RECEIPT | RECORD
+  kind String @default("INVOICE")
+
+  title         String
+  amountCents   Int?
+  invoiceNumber String?
+  documentUrl   String? /// private object storage, signed URLs only
+
+  isVerified   Boolean @default(false)
+  verifiedById String?
+  verifiedBy   User?   @relation("VetRecordVerified", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  uploadedById String
+  uploadedBy   User   @relation("VetRecordUploaded", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([hospitalId])
+  @@map("vet_record")
+}
+
+/// A real grant, charity, low-cost clinic, or financing option an owner can use.
+/// verifiedAt is only set once a human has loaded the URL and confirmed it works
+/// (TTL-208); lastCheckedAt is refreshed on every re-check (TTL-308).
+model FundingSource {
+  id   String @id @default(cuid())
+  name String
+  url  String @unique
+
+  /// GRANT | CHARITY | LOW_COST_CARE | PAYMENT_PLAN | CREDIT | INSURANCE | SHELTER_PROGRAM
+  category String
+  /// NATIONAL | VIRGINIA | HAMPTON_ROADS
+  scope String @default("NATIONAL")
+
+  species     String /// "Dogs, Cats"
+  conditions  String /// what it helps pay for
+  eligibility String /// who qualifies, plain language
+  howToApply  String /// what the owner does next, plain language
+
+  maxAwardCents Int? /// null = no published cap
+  maxAwardNote  String?
+  recurring     Boolean @default(false) /// ongoing/renewable help, not one-off
+
+  incomeRestricted Boolean @default(false)
+  vetMustApply     Boolean @default(false) /// the clinic, not the owner, submits
+
+  isVerified    Boolean   @default(false)
+  verifiedAt    DateTime? /// set when a human confirmed the link resolves
+  lastCheckedAt DateTime?
+  verifyNote    String? /// e.g. "loaded 2026-10-09, application form present"
+
+  notes String?
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  retiredAt DateTime? /// kept for history, hidden from matching
+
+  @@index([category, scope])
+  @@index([isVerified])
+  @@map("funding_source")
+}
+
+/// The plain-language promise an owner accepts before publishing (TTL-211):
+/// the bill, what TakeTheLead covers, and the most the owner can still owe.
+/// A campaign cannot be approved/published without an accepted record.
+model PromiseToPay {
+  id String @id @default(cuid())
+
+  campaignId String @unique
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  billAmountCents         Int /// the vet bill at the time of the promise
+  ttlCoversCents          Int? /// portion TakeTheLead pays directly to the hospital
+  ownerMaxObligationCents Int /// the most the owner can still owe after funds run out
+  ttlCoversText           String /// plain-language summary of what TTL pays
+  ownerObligationText     String /// plain-language summary of what the owner owes
+
+  accepted   Boolean   @default(false)
+  acceptedAt DateTime?
+  acceptedBy String?
+  user       User?     @relation(fields: [acceptedBy], references: [id], onDelete: SetNull)
+
+  termsVersion String   @default("2026-10")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([accepted])
+  @@map("promise_to_pay")
+}
+
+model CampaignReview {
+  id String @id @default(cuid())
+
+  /// APPROVED | REJECTED | CHANGES_REQUESTED
+  decision String
+  reason   String? /// doubles as the rejection reason
+
+  reviewerId String
+  reviewer   User   @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([createdAt])
+  @@map("campaign_review")
 }
