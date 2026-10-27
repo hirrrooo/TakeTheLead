@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -135,7 +136,7 @@
 						<li class="rounded-lg border bg-card p-4">
 							<a
 								class="font-semibold underline-offset-4 hover:underline"
-								href={`/campaign/${campaign.slug}`}
+								href={resolve('/campaign/[slug]', { slug: campaign.slug })}
 							>
 								{campaign.title}
 							</a>
@@ -154,7 +155,7 @@
 			<p class="mt-2 text-muted-foreground">Sign in to share a campaign story.</p>
 			<a
 				class="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-primary-foreground"
-				href="/demo/better-auth/login"
+				href={resolve('/demo/better-auth/login')}
 			>
 				Sign in
 			</a>
@@ -171,7 +172,10 @@
 					<li class="rounded-xl border bg-card p-5">
 						<div class="flex items-start justify-between gap-3">
 							<h3 class="text-lg font-semibold">
-								<a class="underline-offset-4 hover:underline" href={`/campaign/${campaign.slug}`}>
+								<a
+									class="underline-offset-4 hover:underline"
+									href={resolve('/campaign/[slug]', { slug: campaign.slug })}
+								>
 									{campaign.title}
 								</a>
 							</h3>
@@ -204,7 +208,10 @@
 					<li class="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
 						<span>
 							<strong>{donor.name}</strong> supported
-							<a class="underline underline-offset-4" href={`/campaign/${donor.slug}`}>
+							<a
+								class="underline underline-offset-4"
+								href={resolve('/campaign/[slug]', { slug: donor.slug })}
+							>
 								{donor.campaignTitle}
 							</a>
 						</span>

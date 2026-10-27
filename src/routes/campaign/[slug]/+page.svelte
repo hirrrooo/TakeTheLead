@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -30,7 +31,9 @@
 </svelte:head>
 
 <main class="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-12 md:py-16">
-	<a class="w-fit text-sm underline underline-offset-4" href="/campaign">← All campaigns</a>
+	<a class="w-fit text-sm underline underline-offset-4" href={resolve('/campaign')}
+		>← All campaigns</a
+	>
 
 	<article class="rounded-xl border bg-card p-6 md:p-8">
 		<div class="flex flex-wrap items-start justify-between gap-4">

@@ -3,7 +3,6 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import {
 	CAMPAIGN_DURATION_MS,
-	CAMPAIGN_START_WINDOW_MS,
 	ActiveCampaignLimitError,
 	closeExpiredCampaigns,
 	createCampaign,
