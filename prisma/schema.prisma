@@ -128,7 +128,7 @@ model Campaign {
   body          String
   coverImageUrl String?
 
-  /// DRAFT | PENDING_REVIEW | APPROVED | REJECTED | CLOSED | ARCHIVED
+  /// DRAFT | PENDING_REVIEW | APPROVED | PAUSED | REJECTED | CLOSED | WITHDRAWN | ARCHIVED
   status String @default("DRAFT")
   /// PUBLIC | UNLISTED | PRIVATE
   visibility String @default("PUBLIC")

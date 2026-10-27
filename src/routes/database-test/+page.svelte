@@ -500,11 +500,11 @@
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">6. Promise to pay and moderation (TTL-211)</h2>
 		<p class="text-slate-600">
-			Two invariants: the money must add up (<code class="rounded bg-slate-100 px-1"
+			When recording a promise, the money must add up (<code class="rounded bg-slate-100 px-1"
 				>ttlCovers + ownerMax = bill</code
-			>), and a campaign cannot be APPROVED until its owner has accepted the terms. The seeded
-			“Ghost” campaign deliberately has an unaccepted promise — approve it as
-			<code class="rounded bg-slate-100 px-1">seed_mod</code> and watch it get refused.
+			>). For now, campaign approval and publication do not depend on the owner accepting the
+			terms. The seeded “Ghost” campaign deliberately has an unaccepted promise — approve it as
+			<code class="rounded bg-slate-100 px-1">seed_mod</code> to confirm it can still be approved.
 		</p>
 
 		{#if promiseFlash}

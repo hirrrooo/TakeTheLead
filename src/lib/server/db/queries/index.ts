@@ -5,6 +5,7 @@
  * in one place.
  */
 import { db } from '$lib/server/db';
+import { getCampaignDeadline } from '$lib/server/db/campaign-lifecycle';
 import type { Prisma } from '../../../../generated/prisma/client';
 import type {
 	CampaignStatus,
@@ -28,6 +29,56 @@ export class ValidationError extends Error {
 		super(message);
 		this.name = 'ValidationError';
 	}
+}
+
+export async function setOwnerCampaignState(
+	campaignId: string,
+	ownerId: string,
+	action: 'PAUSE' | 'RESUME' | 'WITHDRAW'
+) {
+	const now = new Date();
+	const campaign = await db.campaign.findFirst({
+		where: { id: campaignId, ownerId, deletedAt: null },
+		select: { status: true, createdAt: true, publishedAt: true, deadline: true }
+	});
+	if (!campaign) throw new ValidationError('Campaign not found.');
+
+	if (action === 'RESUME') {
+		const deadline = getCampaignDeadline(campaign);
+		if (deadline <= now) {
+			await db.campaign.updateMany({
+				where: { id: campaignId, ownerId, status: 'PAUSED' },
+				data: { status: 'CLOSED', closedAt: deadline }
+			});
+			throw new ValidationError('This campaign has ended and cannot be resumed.');
+		}
+	}
+
+	const transitions = {
+		PAUSE: { from: ['APPROVED'], to: 'PAUSED' },
+		RESUME: { from: ['PAUSED'], to: 'APPROVED' },
+		WITHDRAW: { from: ['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PAUSED'], to: 'WITHDRAWN' }
+	} as const;
+	const transition = transitions[action];
+
+	const result = await db.campaign.updateMany({
+		where: {
+			id: campaignId,
+			ownerId,
+			status: { in: [...transition.from] },
+			deletedAt: null
+		},
+		data: {
+			status: transition.to,
+			...(action === 'WITHDRAW' ? { closedAt: now } : {})
+		}
+	});
+
+	if (result.count !== 1) {
+		throw new ValidationError('This campaign can no longer be changed in that way.');
+	}
+
+	return db.campaign.findUniqueOrThrow({ where: { id: campaignId } });
 }
 
 // ---------- Invariant: raisedCents ----------
@@ -311,8 +362,8 @@ const DECISION_TO_CAMPAIGN_STATUS: Record<ReviewDecision, CampaignStatus> = {
  * moves Campaign.status in the same transaction. Review facts (who/when/why)
  * live ONLY on the review row.
  *
- * Invariant (TTL-211): a campaign cannot be APPROVED without an accepted
- * promise-to-pay.
+ * Promise-to-pay acceptance is recorded separately and is not required for
+ * campaign approval while the policy is being finalized.
  */
 export async function moderateCampaign(
 	campaignId: string,
@@ -323,20 +374,11 @@ export async function moderateCampaign(
 	return db.$transaction(async (tx) => {
 		const campaign = await tx.campaign.findUnique({
 			where: { id: campaignId },
-			select: { id: true }
+			select: { id: true, status: true }
 		});
 		if (!campaign) throw new ValidationError('Campaign not found');
-
-		if (decision === 'APPROVED') {
-			const promise = await tx.promiseToPay.findUnique({
-				where: { campaignId },
-				select: { accepted: true }
-			});
-			if (!promise?.accepted) {
-				throw new ValidationError(
-					'Cannot approve: the owner has not accepted the promise-to-pay terms'
-				);
-			}
+		if (campaign.status === 'WITHDRAWN' || campaign.status === 'ARCHIVED') {
+			throw new ValidationError('A withdrawn or archived campaign cannot be reviewed.');
 		}
 
 		const review = await tx.campaignReview.create({
@@ -344,13 +386,17 @@ export async function moderateCampaign(
 		});
 
 		const status: CampaignStatus = DECISION_TO_CAMPAIGN_STATUS[decision];
-		const updated = await tx.campaign.update({
-			where: { id: campaignId },
+		const result = await tx.campaign.updateMany({
+			where: { id: campaignId, status: campaign.status, deletedAt: null },
 			data: {
 				status,
 				publishedAt: status === 'APPROVED' ? new Date() : undefined
 			}
 		});
+		if (result.count !== 1) {
+			throw new ValidationError('Campaign status changed while it was being reviewed.');
+		}
+		const updated = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
 
 		return { review, campaign: updated };
 	});
