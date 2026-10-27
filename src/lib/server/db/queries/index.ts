@@ -5,6 +5,7 @@
  * in one place.
  */
 import { db } from '$lib/server/db';
+import { campaignEndDate, campaignWindowsOverlap } from '$lib/server/db/campaigns';
 import type { Prisma } from '../../../../generated/prisma/client';
 import type {
 	CampaignStatus,
@@ -71,18 +72,39 @@ export async function recordDonation(input: RecordDonationInput) {
 		throw new ValidationError('Donation amountCents must be a positive integer');
 	}
 
-	return db.$transaction(async (tx) => {
+	const result = await db.$transaction(async (tx) => {
 		const campaign = await tx.campaign.findUnique({
 			where: { id: input.campaignId },
-			select: { id: true, allowGuestDonations: true, deletedAt: true, status: true }
+			select: {
+				id: true,
+				allowGuestDonations: true,
+				deletedAt: true,
+				status: true,
+				createdAt: true,
+				publishedAt: true,
+				deadline: true
+			}
 		});
 		if (!campaign || campaign.deletedAt) throw new ValidationError('Campaign not found');
+		const now = new Date();
+		const startsAt = campaign.publishedAt ?? campaign.createdAt;
+		const endsAt = campaign.deadline ?? new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+		if (endsAt <= now) {
+			await tx.campaign.updateMany({
+				where: {
+					id: campaign.id,
+					status: { in: ['PENDING_REVIEW', 'APPROVED'] }
+				},
+				data: { status: 'CLOSED', closedAt: endsAt }
+			});
+			return { expired: true as const };
+		}
+		if (startsAt > now) throw new ValidationError('This campaign has not started yet');
 		if (campaign.status !== 'APPROVED') throw new ValidationError('This campaign is not live');
 		if (!input.donorUserId && !campaign.allowGuestDonations) {
 			throw new AccessDeniedError('This campaign does not accept guest donations');
 		}
 
-		const now = new Date();
 		const initialStatus = input.status ?? 'PENDING';
 		const donation = await tx.donation.create({
 			data: {
@@ -104,8 +126,11 @@ export async function recordDonation(input: RecordDonationInput) {
 		const raisedCents = await computeRaisedCents(tx, input.campaignId);
 		await tx.campaign.update({ where: { id: input.campaignId }, data: { raisedCents } });
 
-		return donation;
+		return { donation };
 	});
+
+	if ('expired' in result) throw new ValidationError('This campaign has ended');
+	return result.donation;
 }
 
 /**
@@ -320,14 +345,53 @@ export async function moderateCampaign(
 	decision: ReviewDecision,
 	reason?: string
 ) {
-	return db.$transaction(async (tx) => {
+	const result = await db.$transaction(async (tx) => {
 		const campaign = await tx.campaign.findUnique({
 			where: { id: campaignId },
-			select: { id: true }
+			select: {
+				id: true,
+				ownerId: true,
+				publishedAt: true,
+				createdAt: true,
+				deadline: true,
+				status: true
+			}
 		});
 		if (!campaign) throw new ValidationError('Campaign not found');
 
+		const startsAt = campaign.publishedAt ?? campaign.createdAt;
+		const endsAt = campaign.deadline ?? new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+		if (decision === 'APPROVED' && endsAt <= new Date()) {
+			await tx.campaign.updateMany({
+				where: {
+					id: campaign.id,
+					status: { in: ['PENDING_REVIEW', 'APPROVED'] }
+				},
+				data: { status: 'CLOSED', closedAt: endsAt }
+			});
+			return { expired: true as const };
+		}
+
 		if (decision === 'APPROVED') {
+			const approvedCampaigns = await tx.campaign.findMany({
+				where: {
+					ownerId: campaign.ownerId,
+					status: 'APPROVED',
+					deletedAt: null,
+					id: { not: campaignId }
+				},
+				select: { createdAt: true, publishedAt: true, deadline: true }
+			});
+			const conflictsWithActiveCampaign = approvedCampaigns.some((approved) => {
+				const approvedStart = approved.publishedAt ?? approved.createdAt;
+				return campaignWindowsOverlap(startsAt, endsAt, approvedStart, campaignEndDate(approved));
+			});
+			if (conflictsWithActiveCampaign) {
+				throw new ValidationError(
+					'Cannot approve: the owner already has an active campaign during these dates'
+				);
+			}
+
 			const promise = await tx.promiseToPay.findUnique({
 				where: { campaignId },
 				select: { accepted: true }
@@ -348,10 +412,13 @@ export async function moderateCampaign(
 			where: { id: campaignId },
 			data: {
 				status,
-				publishedAt: status === 'APPROVED' ? new Date() : undefined
+				publishedAt: status === 'APPROVED' ? (campaign.publishedAt ?? new Date()) : undefined
 			}
 		});
 
 		return { review, campaign: updated };
 	});
+
+	if ('expired' in result) throw new ValidationError('Campaign has ended and cannot be moderated');
+	return result;
 }
