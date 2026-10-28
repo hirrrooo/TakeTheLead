@@ -1,7 +1,11 @@
-name: Pull request checks
+name: CI
+run-name: 'CI checks for PR #${{ github.event.pull_request.number || github.ref_name }}'
 
 on:
-  pull_request:
+  push: # Triggers on any commit pushed to ANY branch or tag
+  pull_request: # Triggers on any PR opened, updated (synchronize), or reopened
+  workflow_dispatch: # Adds a "Run workflow" button in GitHub UI for manual runs
+
 
 permissions:
   contents: read
