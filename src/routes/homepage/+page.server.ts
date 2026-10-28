@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { closeExpiredCampaigns, getCampaignDeadline } from '$lib/server/db/campaign-lifecycle';
+import { campaignEndDate, closeExpiredCampaigns } from '$lib/server/db/campaigns';
 import { auth } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -8,7 +8,7 @@ const ACTIVE_CAMPAIGN_STATUSES = ['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PAUSED
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const now = new Date();
-	await closeExpiredCampaigns(undefined, now);
+	await closeExpiredCampaigns(now);
 
 	const liveCampaigns = await db.campaign.findMany({
 		where: {
@@ -81,7 +81,7 @@ function mapCampaigns(
 ) {
 	return campaigns.map((c) => {
 		const goal = c.goalAmountCents ?? c.billAmountCents ?? 0;
-		const deadline = getCampaignDeadline(c);
+		const deadline = campaignEndDate(c);
 		return {
 			id: c.id,
 			slug: c.slug,
