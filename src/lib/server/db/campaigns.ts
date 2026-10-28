@@ -87,12 +87,13 @@ export function parseCampaignDraft(form: FormData, now = new Date()): CampaignDr
 	};
 }
 
-export async function closeExpiredCampaigns(now = new Date()) {
+export async function closeExpiredCampaigns(now = new Date(), ownerId?: string) {
 	const legacyDeadline = new Date(now.getTime() - CAMPAIGN_DURATION_MS);
 	const expired = await db.campaign.findMany({
 		where: {
+			...(ownerId ? { ownerId } : {}),
 			deletedAt: null,
-			status: 'APPROVED',
+			status: { in: ['APPROVED', 'PAUSED'] },
 			OR: [
 				{ deadline: { lte: now } },
 				{
@@ -114,7 +115,7 @@ export async function closeExpiredCampaigns(now = new Date()) {
 			db.campaign.updateMany({
 				where: {
 					id: campaign.id,
-					status: 'APPROVED'
+					status: { in: ['APPROVED', 'PAUSED'] }
 				},
 				data: {
 					status: 'CLOSED',

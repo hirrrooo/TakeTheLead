@@ -31,6 +31,62 @@ export class ValidationError extends Error {
 	}
 }
 
+// ---------- Owner-driven campaign lifecycle ----------
+
+/**
+ * Pause, resume, or withdraw an owned campaign. Transitions are guarded so an
+ * expired campaign cannot be resumed and only valid prior states are accepted.
+ */
+export async function setOwnerCampaignState(
+	campaignId: string,
+	ownerId: string,
+	action: 'PAUSE' | 'RESUME' | 'WITHDRAW'
+) {
+	const now = new Date();
+	const campaign = await db.campaign.findFirst({
+		where: { id: campaignId, ownerId, deletedAt: null },
+		select: { status: true, createdAt: true, publishedAt: true, deadline: true }
+	});
+	if (!campaign) throw new ValidationError('Campaign not found.');
+
+	if (action === 'RESUME') {
+		const deadline = campaignEndDate(campaign);
+		if (deadline <= now) {
+			await db.campaign.updateMany({
+				where: { id: campaignId, ownerId, status: 'PAUSED' },
+				data: { status: 'CLOSED', closedAt: deadline }
+			});
+			throw new ValidationError('This campaign has ended and cannot be resumed.');
+		}
+	}
+
+	const transitions = {
+		PAUSE: { from: ['APPROVED'], to: 'PAUSED' },
+		RESUME: { from: ['PAUSED'], to: 'APPROVED' },
+		WITHDRAW: { from: ['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PAUSED'], to: 'WITHDRAWN' }
+	} as const;
+	const transition = transitions[action];
+
+	const result = await db.campaign.updateMany({
+		where: {
+			id: campaignId,
+			ownerId,
+			status: { in: [...transition.from] },
+			deletedAt: null
+		},
+		data: {
+			status: transition.to,
+			...(action === 'WITHDRAW' ? { closedAt: now } : {})
+		}
+	});
+
+	if (result.count !== 1) {
+		throw new ValidationError('This campaign can no longer be changed in that way.');
+	}
+
+	return db.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+}
+
 // ---------- Invariant: raisedCents ----------
 
 /**
