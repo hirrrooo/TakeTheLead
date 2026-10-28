@@ -14,7 +14,13 @@
 		Users
 	} from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle
+	} from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import type { PageProps } from './$types';
 
@@ -104,8 +110,7 @@
 					upfront barrier — funded by their community.
 					<a
 						href={resolve('/login')}
-						class="font-medium text-primary underline-offset-4 hover:underline"
-						>Create an account</a
+						class="font-medium text-primary underline-offset-4 hover:underline">Create an account</a
 					>
 					to launch your own campaign.
 				{/if}
@@ -150,9 +155,9 @@
 		</CardHeader>
 		<CardContent class="space-y-4">
 			<p class="text-sm leading-relaxed text-muted-foreground">
-				Input your zipcode so we can match you to the closest emergency care specialist in your
-				area (information is subject to change and may not be correct at the time of search;
-				please call before driving to a location).
+				Input your zipcode so we can match you to the closest emergency care specialist in your area
+				(information is subject to change and may not be correct at the time of search; please call
+				before driving to a location).
 			</p>
 			<div class="mx-auto flex max-w-md gap-2" aria-hidden="true">
 				<Input placeholder="Zipcode" disabled />
@@ -181,8 +186,8 @@
 				</CardHeader>
 				<CardContent>
 					<p class="text-sm leading-relaxed text-muted-foreground">
-						We help Members with urgent veterinary bills so pet owners can get the care for
-						their pets immediately.
+						We help Members with urgent veterinary bills so pet owners can get the care for their
+						pets immediately.
 					</p>
 				</CardContent>
 			</Card>
@@ -199,8 +204,8 @@
 				</CardHeader>
 				<CardContent>
 					<p class="text-sm leading-relaxed text-muted-foreground">
-						Create an Account and Launch a 30-day Campaign that allows for friends, neighbors
-						and associates to donate to your cause.
+						Create an Account and Launch a 30-day Campaign that allows for friends, neighbors and
+						associates to donate to your cause.
 					</p>
 					<p class="mt-3 text-xs leading-relaxed text-muted-foreground/80">
 						Note: Take The Lead does require authentication between costs and the Veterinarian
@@ -221,9 +226,9 @@
 				</CardHeader>
 				<CardContent>
 					<p class="text-sm leading-relaxed text-muted-foreground">
-						All Donations go to the pet — The Vet Offices are to be paid, but anything in
-						excess goes to the Member. We have donation offers for those that want to continue
-						the cause and help another Pet Parent in need!
+						All Donations go to the pet — The Vet Offices are to be paid, but anything in excess
+						goes to the Member. We have donation offers for those that want to continue the cause
+						and help another Pet Parent in need!
 					</p>
 				</CardContent>
 			</Card>
@@ -292,7 +297,7 @@
 					>
 						<a
 							href={resolve('/campaign/[slug]', { slug: campaign.slug })}
-							class="flex h-full flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							class="flex h-full flex-col focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 							aria-label="View {campaign.title}"
 						>
 							<div class="relative aspect-[16/9] w-full overflow-hidden bg-muted">
@@ -356,7 +361,7 @@
 
 						<button
 							type="button"
-							class="absolute top-2 right-2 inline-flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm transition-colors hover:bg-background hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							class="absolute top-2 right-2 inline-flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm transition-colors hover:bg-background hover:text-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 							title="Copy campaign link"
 							aria-label="Copy link for {campaign.title}"
 							onclick={(e) => {

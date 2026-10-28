@@ -37,7 +37,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 	});
 
 	if (!locals.user) {
-		return { user: null, hasActiveCampaign: false, liveCampaigns: mapCampaigns(liveCampaigns, now) };
+		return {
+			user: null,
+			hasActiveCampaign: false,
+			liveCampaigns: mapCampaigns(liveCampaigns, now)
+		};
 	}
 
 	const campaign = await db.campaign.findFirst({
