@@ -234,6 +234,28 @@
 				</form>
 			{/if}
 
+			{#if data.campaign.status === 'APPROVED' || data.campaign.status === 'PAUSED'}
+				<section class="space-y-3 border-t pt-6" aria-labelledby="recent-donors-heading">
+					<h3 id="recent-donors-heading" class="text-lg font-semibold">Recent donors</h3>
+					{#if data.recentDonors.length === 0}
+						<p class="text-sm text-muted-foreground">
+							Donors will appear here as donations arrive.
+						</p>
+					{:else}
+						<ul class="divide-y rounded-lg border">
+							{#each data.recentDonors as donor (donor.id)}
+								<li class="flex items-center justify-between gap-3 p-4 text-sm">
+									<span>{donor.name}</span>
+									<span class="text-muted-foreground">
+										{formatCurrency(donor.amountCents)} · {formatDate(donor.createdAt)}
+									</span>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</section>
+			{/if}
+
 			{#if data.campaign.messages.length > 0}
 				<section class="space-y-3 border-t pt-6" aria-labelledby="recent-messages-heading">
 					<h3 id="recent-messages-heading" class="text-lg font-semibold">Recent messages</h3>
@@ -244,7 +266,7 @@
 								<p class="text-sm text-muted-foreground">
 									{message.donor} · {formatCurrency(message.amountCents)} · {formatDate(
 										message.createdAt
-									)}
+									)} · {message.isPrivate ? 'Private (only you can see this)' : 'Public'}
 								</p>
 							</li>
 						{/each}
@@ -271,6 +293,47 @@
 			Saved funding sources and end-of-campaign summaries will be added later.
 		</section>
 	{:else}
+		{#if data.endedCampaign}
+			<section
+				class="space-y-4 rounded-xl border bg-card p-6 md:p-8"
+				aria-labelledby="ended-heading"
+			>
+				<p class="text-sm font-medium text-muted-foreground">
+					ENDED · {formatDate(data.endedCampaign.endedAt)}
+				</p>
+				<h2 id="ended-heading" class="text-2xl font-semibold">{data.endedCampaign.title}</h2>
+				<div class="grid gap-3 sm:grid-cols-3">
+					<div class="rounded-lg bg-muted/50 p-4">
+						<p class="text-sm text-muted-foreground">Final raised</p>
+						<p class="mt-1 text-xl font-bold">{formatCurrency(data.endedCampaign.raisedCents)}</p>
+					</div>
+					<div class="rounded-lg bg-muted/50 p-4">
+						<p class="text-sm text-muted-foreground">Goal</p>
+						<p class="mt-1 text-xl font-bold">{formatCurrency(data.endedCampaign.goalCents)}</p>
+					</div>
+					<div class="rounded-lg bg-muted/50 p-4">
+						<p class="text-sm text-muted-foreground">Donors</p>
+						<p class="mt-1 text-xl font-bold">{data.endedCampaign.donorCount}</p>
+					</div>
+				</div>
+				{#if data.endedCampaign.recentDonors.length > 0}
+					<ul class="divide-y rounded-lg border">
+						{#each data.endedCampaign.recentDonors as donor (donor.id)}
+							<li class="flex items-center justify-between gap-3 p-4 text-sm">
+								<span>{donor.name}</span>
+								<span class="text-muted-foreground">{formatCurrency(donor.amountCents)}</span>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				<a
+					class="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+					href={resolve('/campaign/[slug]', { slug: data.endedCampaign.slug })}
+				>
+					View public page
+				</a>
+			</section>
+		{/if}
 		<section class="rounded-xl border bg-card p-6 md:p-8">
 			<h2 class="text-2xl font-semibold">Start a campaign for your pet</h2>
 			<p class="mt-2 text-muted-foreground">

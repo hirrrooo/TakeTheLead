@@ -1,8 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { db } from '$lib/server/db';
-import type { Campaign } from '../../../generated/prisma/client';
+import type { Prisma } from '../../../generated/prisma/client';
+import {
+	CAMPAIGN_DURATION_MS,
+	campaignEndDate,
+	campaignStartDate,
+	getCampaignState
+} from './campaign-state';
+import { searchTerms } from './campaign-search';
 
-export const CAMPAIGN_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+// One source of truth for the 30-day rule lives in ./campaign-state (pure, tested).
+export { CAMPAIGN_DURATION_MS, campaignEndDate, campaignStartDate, getCampaignState };
 export const CAMPAIGN_START_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 export class CampaignNotFoundError extends Error {}
@@ -185,17 +193,26 @@ export async function findCampaign(slug: string, now = new Date()) {
 	});
 	if (!campaign) return null;
 
-	return {
-		...campaign,
-		live:
-			campaign.status === 'APPROVED' &&
-			(campaign.publishedAt ?? campaign.createdAt) <= now &&
-			campaignEndDate(campaign) > now,
-		ended: campaign.status === 'CLOSED' || campaignEndDate(campaign) <= now
-	};
+	const state = getCampaignState(campaign, now);
+	return { ...campaign, state, live: state === 'live', ended: state === 'ended' };
 }
 
-export async function listRecentDonors(campaignId: string, take = 10) {
+export interface RecentDonorOptions {
+	/** Owner views only: include messages the donor marked private. */
+	includePrivateMessages?: boolean;
+}
+
+/**
+ * Recent completed donations for one campaign. A message the donor marked
+ * private is never returned unless `includePrivateMessages` is set, so public
+ * pages cannot leak it.
+ */
+export async function listRecentDonors(
+	campaignId: string,
+	take = 10,
+	options: RecentDonorOptions = {}
+) {
+	const includePrivate = options.includePrivateMessages === true;
 	const donations = await db.donation.findMany({
 		where: { campaignId, status: 'COMPLETED' },
 		orderBy: { completedAt: 'desc' },
@@ -205,26 +222,155 @@ export async function listRecentDonors(campaignId: string, take = 10) {
 			amountCents: true,
 			donorName: true,
 			isAnonymous: true,
+			message: true,
+			isMessagePrivate: true,
 			createdAt: true,
 			donorUser: { select: { name: true } }
 		}
 	});
 
-	return donations.map((donation) => ({
-		id: donation.id,
-		amountCents: donation.amountCents,
-		name: donation.isAnonymous
-			? 'Anonymous'
-			: (donation.donorName ?? donation.donorUser?.name ?? 'Supporter'),
-		createdAt: donation.createdAt.toISOString()
+	return donations.map((donation) => {
+		const hidden = donation.isMessagePrivate && !includePrivate;
+		return {
+			id: donation.id,
+			amountCents: donation.amountCents,
+			name: donation.isAnonymous
+				? 'Anonymous'
+				: (donation.donorName ?? donation.donorUser?.name ?? 'Supporter'),
+			message: hidden ? null : donation.message,
+			messagePrivate: includePrivate && donation.isMessagePrivate && donation.message !== null,
+			createdAt: donation.createdAt.toISOString()
+		};
+	});
+}
+
+// ---------- Public listing, totals and recent donors (read side) ----------
+
+/** Campaigns that are approved, started and not yet 30 days old. */
+export function liveCampaignWhere(now: Date): Prisma.CampaignWhereInput {
+	const legacyCutoff = new Date(now.getTime() - CAMPAIGN_DURATION_MS);
+	return {
+		status: 'APPROVED',
+		visibility: 'PUBLIC',
+		deletedAt: null,
+		AND: [
+			{ OR: [{ publishedAt: { lte: now } }, { publishedAt: null, createdAt: { lte: now } }] },
+			{
+				OR: [
+					{ deadline: { gt: now } },
+					{
+						deadline: null,
+						OR: [
+							{ publishedAt: { gt: legacyCutoff } },
+							{ publishedAt: null, createdAt: { gt: legacyCutoff } }
+						]
+					}
+				]
+			}
+		]
+	};
+}
+
+/**
+ * Every search word must match somewhere in the campaign: title, short
+ * description, story, owner name, pet name or veterinary hospital name.
+ */
+export function campaignSearchWhere(query: string): Prisma.CampaignWhereInput[] {
+	return searchTerms(query).map((term) => ({
+		OR: [
+			{ title: { contains: term } },
+			{ summary: { contains: term } },
+			{ body: { contains: term } },
+			{ owner: { name: { contains: term } } },
+			{ pets: { some: { pet: { name: { contains: term } } } } },
+			{ vetHospital: { name: { contains: term } } }
+		]
 	}));
 }
 
-export function campaignEndDate(
-	campaign: Pick<Campaign, 'createdAt' | 'publishedAt' | 'deadline'>
-) {
-	return (
-		campaign.deadline ??
-		new Date((campaign.publishedAt ?? campaign.createdAt).getTime() + CAMPAIGN_DURATION_MS)
-	);
+/**
+ * Public campaign list: live and ended campaigns, newest first.
+ * Pass `query` to filter by search words.
+ */
+export async function listPublicCampaigns(now = new Date(), take = 50, query = '') {
+	await closeExpiredCampaigns(now);
+
+	const campaigns = await db.campaign.findMany({
+		where: {
+			visibility: 'PUBLIC',
+			deletedAt: null,
+			OR: [{ status: 'CLOSED' }, liveCampaignWhere(now)],
+			AND: campaignSearchWhere(query)
+		},
+		orderBy: { createdAt: 'desc' },
+		take,
+		include: {
+			owner: { select: { name: true } },
+			_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
+		}
+	});
+
+	return campaigns.map((campaign) => ({
+		id: campaign.id,
+		slug: campaign.slug,
+		title: campaign.title,
+		summary: campaign.summary ?? campaign.body,
+		status: getCampaignState(campaign, now) === 'ended' ? ('ended' as const) : ('live' as const),
+		startDate: campaignStartDate(campaign).toISOString(),
+		endDate: campaignEndDate(campaign).toISOString(),
+		goalCents: campaign.goalAmountCents ?? 0,
+		raisedCents: campaign.raisedCents,
+		donorCount: campaign._count.donations,
+		ownerName: campaign.owner.name ?? 'A Take the Lead member'
+	}));
+}
+
+/** Totals across live campaigns, from COMPLETED donations only. */
+export async function getPlatformTotals(now = new Date()) {
+	const where = liveCampaignWhere(now);
+	const [liveCampaigns, donations] = await Promise.all([
+		db.campaign.count({ where }),
+		db.donation.aggregate({
+			where: { status: 'COMPLETED', campaign: where },
+			_sum: { amountCents: true },
+			_count: { _all: true }
+		})
+	]);
+	return {
+		liveCampaigns,
+		raisedCents: donations._sum.amountCents ?? 0,
+		donations: donations._count._all
+	};
+}
+
+/** Most recent completed donations across public campaigns (anonymity respected). */
+export async function listRecentPublicDonors(take = 10) {
+	const donations = await db.donation.findMany({
+		where: {
+			status: 'COMPLETED',
+			campaign: { visibility: 'PUBLIC', status: { in: ['APPROVED', 'CLOSED'] }, deletedAt: null }
+		},
+		orderBy: { completedAt: 'desc' },
+		take,
+		select: {
+			id: true,
+			amountCents: true,
+			donorName: true,
+			isAnonymous: true,
+			createdAt: true,
+			donorUser: { select: { name: true } },
+			campaign: { select: { slug: true, title: true } }
+		}
+	});
+
+	return donations.map((donation) => ({
+		id: donation.id,
+		name: donation.isAnonymous
+			? 'Anonymous'
+			: (donation.donorName ?? donation.donorUser?.name ?? 'Supporter'),
+		amountCents: donation.amountCents,
+		campaignTitle: donation.campaign.title,
+		slug: donation.campaign.slug,
+		createdAt: donation.createdAt.toISOString()
+	}));
 }
