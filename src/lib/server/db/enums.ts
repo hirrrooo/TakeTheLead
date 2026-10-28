@@ -8,8 +8,10 @@ export const CAMPAIGN_STATUS = [
 	'DRAFT',
 	'PENDING_REVIEW',
 	'APPROVED',
+	'PAUSED',
 	'REJECTED',
 	'CLOSED',
+	'WITHDRAWN',
 	'ARCHIVED'
 ] as const;
 export type CampaignStatus = (typeof CAMPAIGN_STATUS)[number];
