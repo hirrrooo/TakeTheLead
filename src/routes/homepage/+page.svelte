@@ -36,11 +36,12 @@
 		return 'Good evening';
 	});
 
+	// Placeholder links until the real resource pages exist.
 	const resources = [
-		{ label: 'Veterinary Costs and Why', href: '/contact-us' },
-		{ label: 'Pet Insurance', href: '/contact-us' },
-		{ label: 'Pet Credit Cards', href: '/contact-us' },
-		{ label: 'Additional Information', href: '/contact-us' }
+		'Veterinary Costs and Why',
+		'Pet Insurance',
+		'Pet Credit Cards',
+		'Additional Information'
 	];
 
 	let copiedId = $state<string | null>(null);
@@ -251,14 +252,14 @@
 			</CardHeader>
 			<CardContent>
 				<ul class="grid justify-items-center gap-2 sm:grid-cols-2">
-					{#each resources as resource (resource.label)}
+					{#each resources as label (label)}
 						<li>
 							<a
-								href={resource.href}
+								href={resolve('/contact-us')}
 								class="inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
 							>
 								<ArrowLeft class="size-3.5 -rotate-45" aria-hidden="true" />
-								{resource.label}
+								{label}
 							</a>
 						</li>
 					{/each}
