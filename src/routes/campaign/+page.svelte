@@ -155,7 +155,7 @@
 			<p class="mt-2 text-muted-foreground">Sign in to share a campaign story.</p>
 			<a
 				class="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-primary-foreground"
-				href={resolve('/demo/better-auth/login')}
+				href={resolve('/login')}
 			>
 				Sign in
 			</a>
