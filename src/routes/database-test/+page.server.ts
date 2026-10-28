@@ -11,10 +11,19 @@
  * the page also proves the guard layer works — including the rejections.
  */
 import { fail } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { auth } from '$lib/server/auth';
+import {
+	checkRaisedCentsConsistency,
+	listActiveSessions,
+	listCredentialAccounts,
+	listMemberUsers,
+	recomputeAllRaisedCentsCaches
+} from '$lib/server/db/accounts';
+import { listLiveFundingSources, searchVetHospitals } from '$lib/server/db/directory';
+import { getCampaignTotals, listCampaignOverview } from '$lib/server/db/campaigns';
+import { donationStatusBreakdown, listRecentDonationsAnyStatus } from '$lib/server/db/browse';
 import {
 	acceptPromiseToPay,
-	computeRaisedCents,
 	moderateCampaign,
 	recordDonation,
 	requireCampaignAccess,
@@ -64,84 +73,32 @@ function bad(title: string, error: unknown) {
 	};
 }
 
-/** Recomputes raisedCents for every campaign and reports any drift. */
-async function checkRaisedCents() {
-	const campaigns = await db.campaign.findMany({
-		where: { deletedAt: null },
-		select: { id: true, slug: true, raisedCents: true }
-	});
-	const rows = await Promise.all(
-		campaigns.map(async (c) => {
-			const actual = await computeRaisedCents(db, c.id);
-			return {
-				id: c.id,
-				slug: c.slug,
-				cached: c.raisedCents,
-				actual,
-				ok: c.raisedCents === actual
-			};
-		})
-	);
-	return { allOk: rows.every((r) => r.ok), rows };
-}
-
 export const load: PageServerLoad = async ({ url }) => {
 	const zip = url.searchParams.get('zip')?.trim() ?? '';
 	const species = url.searchParams.get('species')?.trim() ?? '';
 	const scope = url.searchParams.get('scope')?.trim() ?? '';
 
-	const [hospitals, fundingSources, campaigns, users, donationStatuses, recentDonations] =
-		await Promise.all([
-			// TTL-206 shape: find hospitals by ZIP, always-open first.
-			db.vetHospital.findMany({
-				where: {
-					deletedAt: null,
-					...(zip ? { postalCode: { startsWith: zip } } : {}),
-					...(species ? { speciesServed: { contains: species } } : {})
-				},
-				orderBy: [{ is24Hour: 'desc' }, { isEmergency: 'desc' }, { name: 'asc' }],
-				take: 20
-			}),
-			// TTL-308 shape: live, non-retired sources, optionally by scope.
-			db.fundingSource.findMany({
-				where: { retiredAt: null, ...(scope ? { scope } : {}) },
-				orderBy: [{ scope: 'asc' }, { name: 'asc' }],
-				take: 30
-			}),
-			db.campaign.findMany({
-				where: { deletedAt: null },
-				orderBy: { createdAt: 'desc' },
-				include: {
-					owner: { select: { id: true, name: true } },
-					vetHospital: { select: { name: true, postalCode: true } },
-					promiseToPay: { select: { accepted: true } },
-					_count: { select: { donations: true } }
-				}
-			}),
-			db.user.findMany({
-				where: { isSystem: false },
-				select: { id: true, name: true, email: true, isModerator: true },
-				orderBy: { name: 'asc' }
-			}),
-			db.donation.groupBy({
-				by: ['status'],
-				_count: { _all: true },
-				_sum: { amountCents: true }
-			}),
-			db.donation.findMany({
-				orderBy: { createdAt: 'desc' },
-				take: 12,
-				select: {
-					id: true,
-					status: true,
-					provider: true,
-					amountCents: true,
-					donorName: true,
-					isAnonymous: true,
-					campaignId: true,
-					campaign: { select: { slug: true } }
-				}
-			})
+	const [
+			hospitals,
+			fundingSources,
+			campaigns,
+			users,
+			accounts,
+			sessions,
+			donationStatuses,
+			recentDonations
+		] = await Promise.all([
+			// TTL-206 / TTL-308 reads live in $lib/server/db/directory.
+			searchVetHospitals({ zip: zip || undefined, species: species || undefined, limit: 20 }),
+			listLiveFundingSources({ scope: scope || undefined, limit: 30 }),
+			// Campaign/member/donation reads live in $lib/server/db so any surface reuses them.
+			listCampaignOverview(),
+			listMemberUsers(),
+			// TTL-209 reads live in $lib/server/db/accounts so any surface can reuse them.
+			listCredentialAccounts(),
+			listActiveSessions(15),
+			donationStatusBreakdown(),
+			listRecentDonationsAnyStatus(12)
 		]);
 
 	return {
@@ -195,11 +152,21 @@ export const load: PageServerLoad = async ({ url }) => {
 		})),
 		users,
 		actionUsers: ACTION_USERS,
+		accounts: accounts.map((a) => ({
+			...a,
+			createdAt: a.createdAt.slice(0, 10),
+			updatedAt: a.updatedAt.slice(0, 10)
+		})),
+		sessions: sessions.map((s) => ({
+			...s,
+			createdAt: s.createdAt.slice(0, 16).replace('T', ' '),
+			userAgent: s.userAgent ? s.userAgent.slice(0, 60) : null
+		})),
 		donationStatuses: donationStatuses
 			.map((d) => ({
 				status: d.status,
-				count: d._count._all,
-				totalCents: d._sum.amountCents ?? 0
+				count: d.donationCount,
+				totalCents: d.raisedCents
 			}))
 			.sort((a, b) => b.count - a.count),
 		recentDonations: recentDonations.map((d) => ({
@@ -210,7 +177,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			donor: d.isAnonymous ? 'anonymous' : (d.donorName ?? '—'),
 			slug: d.campaign.slug
 		})),
-		raisedCentsCheck: await checkRaisedCents(),
+		raisedCentsCheck: await checkRaisedCentsConsistency(),
 		totals: {
 			hospitals: hospitals.length,
 			fundingSources: fundingSources.length,
@@ -254,10 +221,7 @@ export const actions: Actions = {
 				isAnonymous: form.get('isAnonymous') === 'on',
 				message: String(form.get('message') ?? '').trim() || null
 			});
-			const campaign = await db.campaign.findUnique({
-				where: { id: donation.campaignId },
-				select: { raisedCents: true, slug: true }
-			});
+			const campaign = await getCampaignTotals(donation.campaignId);
 			return {
 				donation: ok(
 					`Donation of ${dollars(donation.amountCents)} recorded`,
@@ -284,10 +248,7 @@ export const actions: Actions = {
 		}
 		try {
 			const updated = await setDonationStatus(donationId, status as 'COMPLETED');
-			const campaign = await db.campaign.findUnique({
-				where: { id: updated.campaignId },
-				select: { raisedCents: true, slug: true }
-			});
+			const campaign = await getCampaignTotals(updated.campaignId);
 			return {
 				donation: ok(
 					`Donation is now ${updated.status}`,
@@ -398,25 +359,76 @@ export const actions: Actions = {
 
 	/** Self-heal the raisedCents cache for every campaign. */
 	recompute: async () => {
-		const campaigns = await db.campaign.findMany({
-			where: { deletedAt: null },
-			select: { id: true }
-		});
-		for (const c of campaigns) {
-			await db.campaign.update({
-				where: { id: c.id },
-				data: { raisedCents: await computeRaisedCents(db, c.id) }
-			});
-		}
-		const check = await checkRaisedCents();
+		const { recomputed, audit } = await recomputeAllRaisedCentsCaches();
 		return {
-			raisedCentsCheck: check,
+			raisedCentsCheck: audit,
 			recompute: ok(
-				`Recomputed ${campaigns.length} campaigns`,
-				check.allOk
+				`Recomputed ${recomputed} campaigns`,
+				audit.allOk
 					? 'Every raisedCents cache equals SUM(COMPLETED donations).'
 					: 'Some rows still disagree — see the consistency table.'
 			)
 		};
+	},
+
+	/**
+	 * TTL-209 live auth. These call the same better-auth API the real /login page
+	 * uses, so the users/accounts/session rows they write are the real thing.
+	 * The sveltekitCookies plugin sets the session cookie on this very response,
+	 * which means a successful sign-in here also signs the browser into /dashboard.
+	 */
+	benchSignUp: async ({ request }) => {
+		const form = await request.formData();
+		const name = String(form.get('name') ?? '').trim();
+		const email = String(form.get('email') ?? '').trim();
+		const password = String(form.get('password') ?? '');
+		try {
+			const res = await auth.api.signUpEmail({
+				body: { email, password, name },
+				headers: request.headers
+			});
+			return {
+				auth: ok(
+					`Signed up ${res.user?.email ?? email}`,
+					'A users row, a credential account row (scrypt hash) and a session row were written. The browser now holds that session cookie.'
+				)
+			};
+		} catch (error) {
+			return fail(400, { auth: bad('signUpEmail refused', error) });
+		}
+	},
+
+	benchSignIn: async ({ request }) => {
+		const form = await request.formData();
+		const email = String(form.get('email') ?? '').trim();
+		const password = String(form.get('password') ?? '');
+		try {
+			const res = await auth.api.signInEmail({
+				body: { email, password },
+				headers: request.headers
+			});
+			return {
+				auth: ok(
+					`Signed in ${res.user?.email ?? email}`,
+					'better-auth compared the password against the stored scrypt hash and issued a session row. Try /dashboard now.'
+				)
+			};
+		} catch (error) {
+			return fail(401, { auth: bad('signInEmail refused', error) });
+		}
+	},
+
+	benchSignOut: async ({ request }) => {
+		try {
+			await auth.api.signOut({ headers: request.headers });
+			return {
+				auth: ok(
+					'Signed out',
+					'The session row was deleted and the cookie cleared. Any other device keeps its own session.'
+				)
+			};
+		} catch (error) {
+			return fail(400, { auth: bad('signOut refused', error) });
+		}
 	}
 };

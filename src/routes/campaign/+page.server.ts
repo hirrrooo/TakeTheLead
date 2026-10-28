@@ -1,6 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { db } from '$lib/server/db';
 import {
 	CAMPAIGN_DURATION_MS,
 	ActiveCampaignLimitError,
@@ -8,88 +7,24 @@ import {
 	createCampaign,
 	parseCampaignDraft
 } from '$lib/server/db/campaigns';
-import type { Prisma } from '../../generated/prisma/client';
-
-const activeCampaignFilter = (now: Date): Prisma.CampaignWhereInput => ({
-	status: 'APPROVED',
-	visibility: 'PUBLIC',
-	deletedAt: null,
-	AND: [
-		{
-			OR: [{ publishedAt: { lte: now } }, { publishedAt: null, createdAt: { lte: now } }]
-		},
-		{
-			OR: [
-				{ deadline: { gt: now } },
-				{
-					deadline: null,
-					OR: [
-						{ publishedAt: { gt: new Date(now.getTime() - CAMPAIGN_DURATION_MS) } },
-						{
-							publishedAt: null,
-							createdAt: { gt: new Date(now.getTime() - CAMPAIGN_DURATION_MS) }
-						}
-					]
-				}
-			]
-		}
-	]
-});
+import {
+	getBrowseTotals,
+	listBrowseCampaigns,
+	listPendingCampaignsForOwner,
+	listRecentPublicDonations
+} from '$lib/server/db/browse';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const now = new Date();
 	await closeExpiredCampaigns(now);
 
-	const liveFilter = activeCampaignFilter(now);
 	const [campaigns, totals, recentDonations, myPendingCampaigns] = await Promise.all([
-		db.campaign.findMany({
-			where: {
-				visibility: 'PUBLIC',
-				deletedAt: null,
-				OR: [{ status: 'CLOSED' }, liveFilter]
-			},
-			orderBy: { createdAt: 'desc' },
-			take: 50,
-			include: {
-				owner: { select: { name: true } },
-				_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
-			}
-		}),
-		Promise.all([
-			db.campaign.count({ where: liveFilter }),
-			db.donation.aggregate({
-				where: { status: 'COMPLETED', campaign: liveFilter },
-				_sum: { amountCents: true },
-				_count: { _all: true }
-			})
-		]),
-		db.donation.findMany({
-			where: {
-				status: 'COMPLETED',
-				campaign: { visibility: 'PUBLIC', status: { in: ['APPROVED', 'CLOSED'] }, deletedAt: null }
-			},
-			orderBy: { completedAt: 'desc' },
-			take: 10,
-			select: {
-				id: true,
-				amountCents: true,
-				donorName: true,
-				isAnonymous: true,
-				createdAt: true,
-				donorUser: { select: { name: true } },
-				campaign: { select: { slug: true, title: true } }
-			}
-		}),
-		locals.user
-			? db.campaign.findMany({
-					where: { ownerId: locals.user.id, status: 'PENDING_REVIEW', deletedAt: null },
-					orderBy: { createdAt: 'desc' },
-					select: { slug: true, title: true, publishedAt: true, deadline: true }
-				})
-			: Promise.resolve([])
+		listBrowseCampaigns(now),
+		getBrowseTotals(now),
+		listRecentPublicDonations(10),
+		locals.user ? listPendingCampaignsForOwner(locals.user.id) : Promise.resolve([])
 	]);
 
-	const [liveCount, donationTotals] = totals;
 	return {
 		campaigns: campaigns.map((campaign) => ({
 			id: campaign.id,
@@ -115,9 +50,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 			ended: campaign.deadline !== null && campaign.deadline <= now
 		})),
 		totals: {
-			liveCampaigns: liveCount,
-			raisedCents: donationTotals._sum.amountCents ?? 0,
-			donations: donationTotals._count._all
+			liveCampaigns: totals.liveCampaigns,
+			raisedCents: totals.raisedCents,
+			donations: totals.donationCount
 		},
 		recentDonors: recentDonations.map((donation) => ({
 			id: donation.id,
