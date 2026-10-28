@@ -130,7 +130,7 @@
 		<PawPrint
 			class="pointer-events-none absolute -right-16 -bottom-16 size-96 rotate-12 opacity-[0.06]"
 		/>
-		<a href={resolve('/')} class="inline-flex items-center gap-3">
+		<a href={resolve('/campaign')} class="inline-flex items-center gap-3">
 			<span class="flex size-11 items-center justify-center rounded-xl bg-background">
 				<img src="/ttl-logo.svg" alt="" class="size-7" />
 			</span>
@@ -172,7 +172,7 @@
 	<section class="flex flex-1 items-center justify-center bg-background px-4 py-10 sm:px-8">
 		<div class="w-full max-w-md">
 			<a
-				href={resolve('/')}
+				href={resolve('/campaign')}
 				class="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground lg:hidden"
 			>
 				<img src="/ttl-logo.svg" alt="" class="size-6" />
