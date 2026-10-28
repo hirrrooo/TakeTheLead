@@ -95,9 +95,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	]);
 
 	const campaignEnd =
-		campaign && ['APPROVED', 'PAUSED'].includes(campaign.status)
-			? campaignEndDate(campaign)
-			: null;
+		campaign && ['APPROVED', 'PAUSED'].includes(campaign.status) ? campaignEndDate(campaign) : null;
 	const donorCount = campaign ? await countCampaignDonors(campaign.id) : 0;
 
 	return {
