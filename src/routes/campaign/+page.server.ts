@@ -135,7 +135,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		if (!locals.user) redirect(303, '/demo/better-auth/login');
+		if (!locals.user) redirect(303, '/login');
 
 		const form = await request.formData();
 		const draft = parseCampaignDraft(form);

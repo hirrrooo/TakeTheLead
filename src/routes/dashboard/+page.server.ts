@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { auth } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import {
 	CAMPAIGN_DURATION_MS,
@@ -371,6 +372,10 @@ export const actions: Actions = {
 			if (error instanceof ValidationError) return fail(409, { error: error.message });
 			throw error;
 		}
+	},
+	signOut: async ({ request }) => {
+		await auth.api.signOut({ headers: request.headers });
+		redirect(303, '/');
 	}
 };
 
