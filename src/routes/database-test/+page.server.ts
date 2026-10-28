@@ -375,7 +375,7 @@ export const actions: Actions = {
 
 	/**
 	 * moderateCampaign: writes the immutable review row and moves the status.
-	 * Promise-to-pay acceptance is not required for approval.
+	 * Approving a campaign whose promise is not accepted must fail (TTL-211).
 	 */
 	moderate: async ({ request }) => {
 		const form = await request.formData();
