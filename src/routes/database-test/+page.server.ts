@@ -79,27 +79,27 @@ export const load: PageServerLoad = async ({ url }) => {
 	const scope = url.searchParams.get('scope')?.trim() ?? '';
 
 	const [
-			hospitals,
-			fundingSources,
-			campaigns,
-			users,
-			accounts,
-			sessions,
-			donationStatuses,
-			recentDonations
-		] = await Promise.all([
-			// TTL-206 / TTL-308 reads live in $lib/server/db/directory.
-			searchVetHospitals({ zip: zip || undefined, species: species || undefined, limit: 20 }),
-			listLiveFundingSources({ scope: scope || undefined, limit: 30 }),
-			// Campaign/member/donation reads live in $lib/server/db so any surface reuses them.
-			listCampaignOverview(),
-			listMemberUsers(),
-			// TTL-209 reads live in $lib/server/db/accounts so any surface can reuse them.
-			listCredentialAccounts(),
-			listActiveSessions(15),
-			donationStatusBreakdown(),
-			listRecentDonationsAnyStatus(12)
-		]);
+		hospitals,
+		fundingSources,
+		campaigns,
+		users,
+		accounts,
+		sessions,
+		donationStatuses,
+		recentDonations
+	] = await Promise.all([
+		// TTL-206 / TTL-308 reads live in $lib/server/db/directory.
+		searchVetHospitals({ zip: zip || undefined, species: species || undefined, limit: 20 }),
+		listLiveFundingSources({ scope: scope || undefined, limit: 30 }),
+		// Campaign/member/donation reads live in $lib/server/db so any surface reuses them.
+		listCampaignOverview(),
+		listMemberUsers(),
+		// TTL-209 reads live in $lib/server/db/accounts so any surface can reuse them.
+		listCredentialAccounts(),
+		listActiveSessions(15),
+		donationStatusBreakdown(),
+		listRecentDonationsAnyStatus(12)
+	]);
 
 	return {
 		zip,

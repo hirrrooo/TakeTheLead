@@ -55,9 +55,9 @@
 			user each action runs as instead.
 		</p>
 		<p class="text-xs text-slate-500">
-			Reset everything with <code class="rounded bg-slate-100 px-1">npm run db:reset</code>. Demo logins
-			(see section 8) sign in at <a class="underline" href={resolve('/login')}>/login</a> with the
-			password in <code class="rounded bg-slate-100 px-1">prisma/seed-data.ts</code>.
+			Reset everything with <code class="rounded bg-slate-100 px-1">npm run db:reset</code>. Demo
+			logins (see section 8) sign in at <a class="underline" href={resolve('/login')}>/login</a>
+			with the password in <code class="rounded bg-slate-100 px-1">prisma/seed-data.ts</code>.
 		</p>
 	</header>
 
@@ -734,8 +734,9 @@
 		<h2 class="text-lg font-semibold">8. Members, accounts &amp; sessions (TTL-209)</h2>
 		<p class="text-slate-600">
 			The better-auth tables behind sign-up/sign-in/sign-out. Passwords live in the
-			<code class="rounded bg-slate-100 px-1">account</code> table as scrypt hashes — the preview below
-			proves the stored value is a hash, never the plain password. The live forms call the same
+			<code class="rounded bg-slate-100 px-1">account</code> table as scrypt hashes — the preview
+			below proves the stored value is a hash, never the plain password. The live forms call the
+			same
 			<code class="rounded bg-slate-100 px-1">auth.api</code> the real
 			<code class="rounded bg-slate-100 px-1">/login</code> page uses, and they set the real session
 			cookie, so signing in here also signs this browser into
