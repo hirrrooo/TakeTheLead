@@ -5,7 +5,8 @@
  * in one place.
  */
 import { db } from '$lib/server/db';
-import { campaignEndDate, campaignWindowsOverlap } from '$lib/server/db/campaigns';
+import { campaignWindowsOverlap } from '$lib/server/db/campaigns';
+import { campaignEndDate, campaignStartDate } from '$lib/server/db/campaign-state';
 import type { Prisma } from '../../../../generated/prisma/client';
 import type {
 	CampaignStatus,
@@ -114,8 +115,12 @@ export interface RecordDonationInput {
 	donorName?: string | null;
 	isAnonymous?: boolean;
 	message?: string | null;
+	/** Only the campaign owner can read the message when true. Default: public. */
+	isMessagePrivate?: boolean;
 	currency?: string;
 	feeCents?: number;
+	/** Clock override for tests; defaults to the current time. */
+	now?: Date;
 }
 
 /**
@@ -142,9 +147,22 @@ export async function recordDonation(input: RecordDonationInput) {
 			}
 		});
 		if (!campaign || campaign.deletedAt) throw new ValidationError('Campaign not found');
-		const now = new Date();
-		const startsAt = campaign.publishedAt ?? campaign.createdAt;
-		const endsAt = campaign.deadline ?? new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+		// Idempotency: a repeated providerRef (double-submitted form, retried webhook)
+		// returns the donation already recorded instead of creating a second one.
+		if (input.providerRef) {
+			const existing = await tx.donation.findUnique({ where: { providerRef: input.providerRef } });
+			if (existing) {
+				if (existing.campaignId !== input.campaignId) {
+					throw new ValidationError('This payment reference is already in use');
+				}
+				return { donation: existing };
+			}
+		}
+
+		const now = input.now ?? new Date();
+		const startsAt = campaignStartDate(campaign);
+		const endsAt = campaignEndDate(campaign);
 		if (endsAt <= now) {
 			await tx.campaign.updateMany({
 				where: {
@@ -173,6 +191,7 @@ export async function recordDonation(input: RecordDonationInput) {
 				donorName: input.donorName ?? null,
 				isAnonymous: input.isAnonymous ?? false,
 				message: input.message ?? null,
+				isMessagePrivate: input.message ? (input.isMessagePrivate ?? false) : false,
 				currency: input.currency ?? 'usd',
 				feeCents: input.feeCents ?? 0,
 				completedAt: initialStatus === 'COMPLETED' ? now : null
@@ -415,8 +434,8 @@ export async function moderateCampaign(
 		});
 		if (!campaign) throw new ValidationError('Campaign not found');
 
-		const startsAt = campaign.publishedAt ?? campaign.createdAt;
-		const endsAt = campaign.deadline ?? new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+		const startsAt = campaignStartDate(campaign);
+		const endsAt = campaignEndDate(campaign);
 		if (decision === 'APPROVED' && endsAt <= new Date()) {
 			await tx.campaign.updateMany({
 				where: {

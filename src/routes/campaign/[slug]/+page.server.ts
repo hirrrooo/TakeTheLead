@@ -8,6 +8,9 @@ import {
 } from '$lib/server/db/campaigns';
 import { recordDonation, ValidationError } from '$lib/server/db/queries';
 import { randomUUID } from 'node:crypto';
+import { getPaymentProvider, parseIdempotencyKey } from '$lib/server/payments';
+
+const MIN_DONATION_CENTS = 100;
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const campaign = await findCampaign(params.slug);
@@ -42,7 +45,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		},
 		recentDonors,
 		user: locals.user ? { id: locals.user.id, name: locals.user.name } : null,
-		isOwner
+		isOwner,
+		// One-time token so a double-clicked donate button records a single donation.
+		donationKey: randomUUID()
 	};
 };
 
@@ -54,14 +59,20 @@ export const actions: Actions = {
 		const name = String(form.get('name') ?? '').trim();
 		const message = String(form.get('message') ?? '').trim();
 		const anonymous = form.get('anonymous') === 'on';
+		// "public" (default) shows the message on the campaign page; "private" shows it
+		// only to the campaign owner.
+		const messagePrivate = form.get('messageVisibility') === 'private';
 
 		if (
 			!campaignId ||
 			amountCents === null ||
+			amountCents < MIN_DONATION_CENTS ||
 			message.length > 500 ||
 			(!locals.user && name.length > 0 && (name.length < 2 || name.length > 100))
 		) {
-			return fail(400, { donationError: 'Enter a valid amount and donor details.' });
+			return fail(400, {
+				donationError: 'Enter a valid amount (at least $1) and donor details.'
+			});
 		}
 
 		try {
@@ -69,16 +80,22 @@ export const actions: Actions = {
 			if (!campaign || campaign.id !== campaignId) {
 				return fail(400, { donationError: 'This campaign could not be found.' });
 			}
+			const payment = await getPaymentProvider().charge({
+				amountCents,
+				currency: 'usd',
+				idempotencyKey: parseIdempotencyKey(form.get('idempotencyKey'))
+			});
 			await recordDonation({
 				campaignId,
 				amountCents,
-				status: 'COMPLETED',
-				provider: 'SIMULATED',
-				providerRef: `sim_${randomUUID()}`,
+				status: payment.status,
+				provider: payment.provider,
+				providerRef: payment.providerRef,
 				donorUserId: locals.user?.id ?? null,
 				donorName: locals.user ? null : anonymous ? 'Anonymous' : name || 'Supporter',
 				isAnonymous: anonymous,
-				message: message || null
+				message: message || null,
+				isMessagePrivate: message.length > 0 && messagePrivate
 			});
 		} catch (error) {
 			if (error instanceof ValidationError) {
