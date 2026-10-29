@@ -4,7 +4,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { auth } from '$lib/server/auth';
 
 export const load: PageServerLoad = ({ locals }) => {
-	if (locals.user) redirect(303, '/homepage');
+	if (locals.user) redirect(303, '/dashboard');
 	return {};
 };
 
@@ -17,7 +17,7 @@ export const actions: Actions = {
 
 		try {
 			await auth.api.signInEmail({
-				body: { email, password, rememberMe, callbackURL: '/homepage' },
+				body: { email, password, rememberMe, callbackURL: '/dashboard' },
 				headers: event.request.headers
 			});
 		} catch (error) {
@@ -43,7 +43,7 @@ export const actions: Actions = {
 
 		try {
 			await auth.api.signUpEmail({
-				body: { email, password, name, callbackURL: '/homepage' },
+				body: { email, password, name, callbackURL: '/dashboard' },
 				headers: event.request.headers
 			});
 		} catch (error) {
