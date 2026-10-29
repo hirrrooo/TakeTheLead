@@ -116,6 +116,7 @@
 			</p>
 			<form method="POST" action="?/donate" class="mt-5 grid gap-4 sm:grid-cols-2">
 				<input type="hidden" name="campaignId" value={data.campaign.id} />
+				<input type="hidden" name="idempotencyKey" value={data.donationKey} />
 				<label class="grid gap-2 text-sm font-medium">
 					Donation (USD)
 					<input
@@ -147,6 +148,18 @@
 						maxlength="500"
 						rows="3"></textarea>
 				</label>
+				<fieldset class="grid gap-2 text-sm sm:col-span-2">
+					<legend class="font-medium">Who can see my message?</legend>
+					<label class="flex items-center gap-2">
+						<input type="radio" name="messageVisibility" value="public" checked />
+						Everyone — shown on the campaign page
+					</label>
+					<label class="flex items-center gap-2">
+						<input type="radio" name="messageVisibility" value="private" />
+						Only the campaign owner
+					</label>
+					<span class="text-muted-foreground">Applies only if you write a message.</span>
+				</fieldset>
 				<label class="flex items-center gap-2 text-sm sm:col-span-2">
 					<input type="checkbox" name="anonymous" />
 					Show my donation as anonymous
@@ -177,11 +190,16 @@
 		{:else}
 			<ul class="divide-y rounded-lg border">
 				{#each data.recentDonors as donor (donor.id)}
-					<li class="flex items-center justify-between gap-3 p-4 text-sm">
-						<span>{donor.name}</span>
-						<span class="text-muted-foreground">
-							{formatCurrency(donor.amountCents)} · {formatDate(donor.createdAt)}
-						</span>
+					<li class="space-y-1 p-4 text-sm">
+						<div class="flex items-center justify-between gap-3">
+							<span>{donor.name}</span>
+							<span class="text-muted-foreground">
+								{formatCurrency(donor.amountCents)} · {formatDate(donor.createdAt)}
+							</span>
+						</div>
+						{#if donor.message}
+							<p class="whitespace-pre-wrap text-muted-foreground">“{donor.message}”</p>
+						{/if}
 					</li>
 				{/each}
 			</ul>

@@ -195,8 +195,8 @@
 								? 'You’re signed in. Your next campaign is waiting.'
 								: 'Your account is ready. Start your first campaign from your dashboard.'}
 						</p>
-						<Button href="/homepage" class="mt-2 w-full sm:w-auto">
-							Go to homepage
+						<Button href="/dashboard" class="mt-2 w-full sm:w-auto">
+							Go to dashboard
 							<ArrowLeft class="size-4 rotate-180" aria-hidden="true" />
 						</Button>
 						<button
