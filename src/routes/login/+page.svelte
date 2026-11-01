@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		ArrowLeft,
 		CircleCheck,
@@ -25,7 +27,7 @@
 	type Status = 'idle' | 'submitting' | 'success';
 
 	let { form }: PageProps = $props();
-	let mode = $state<Mode>('signin');
+	let mode = $state<Mode>(page.url.searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
 	let status = $state<Status>('idle');
 
 	// Sign-in fields
@@ -62,6 +64,11 @@
 		'bg-accent',
 		'bg-primary'
 	] as const;
+
+	// The header links here with ?mode=signup, including while this page is already open.
+	afterNavigate(({ to }) => {
+		if (to) switchMode(to.url.searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
+	});
 
 	function switchMode(next: Mode) {
 		if (mode === next) return;
