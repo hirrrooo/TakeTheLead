@@ -7,6 +7,43 @@
 	let dismissedEditError = $state(false);
 	let editErrorVisible = $derived(Boolean(form?.editError) && !dismissedEditError);
 
+	let billInput = $state<string | number>('');
+	let ttlCoversInput = $state<string | number>('');
+	let selectedHospitalId = $state('');
+	let customHospitalName = $state('');
+	let promiseAccepted = $state(false);
+
+	$effect(() => {
+		if (form?.createDraft) {
+			billInput = form.createDraft.billAmount ?? '';
+			ttlCoversInput = form.createDraft.ttlCoversAmount ?? '';
+			selectedHospitalId = form.createDraft.vetHospitalId ?? '';
+			customHospitalName = form.createDraft.hospitalName ?? '';
+		}
+	});
+
+	function parsePreviewCents(raw: string | number | null | undefined): number | null {
+		const normalized = String(raw ?? '').trim();
+		if (!/^\d{1,7}(?:\.\d{1,2})?$/.test(normalized)) return null;
+		const [dollars, cents = ''] = normalized.split('.');
+		const amount = Number(dollars) * 100 + Number(cents.padEnd(2, '0'));
+		return Number.isSafeInteger(amount) && amount >= 0 && amount <= 100_000_000 ? amount : null;
+	}
+
+	const billPreviewCents = $derived(parsePreviewCents(billInput) ?? 0);
+	const ttlCoversPreviewCents = $derived.by(() => {
+		if (!String(ttlCoversInput ?? '').trim()) return billPreviewCents;
+		return parsePreviewCents(ttlCoversInput) ?? 0;
+	});
+	const ownerMaxPreviewCents = $derived(Math.max(0, billPreviewCents - ttlCoversPreviewCents));
+	const selectedHospitalLabel = $derived.by(() => {
+		if (selectedHospitalId === 'new') {
+			return customHospitalName.trim() || 'your veterinary hospital';
+		}
+		const found = data.hospitals.find((h) => h.id === selectedHospitalId);
+		return found?.name ?? 'your veterinary hospital';
+	});
+
 	function openEdit() {
 		editing = true;
 		dismissedEditError = false;
@@ -16,7 +53,6 @@
 		editing = false;
 		dismissedEditError = true;
 	}
-
 	function formatCurrency(cents: number) {
 		return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
 			cents / 100
@@ -65,6 +101,8 @@
 		<p class="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm" role="status">
 			{#if form.success === 'published'}
 				Campaign published and live. Supporters can now view it.
+			{:else if form.success === 'promise_accepted'}
+				Promise to Pay terms accepted and recorded.
 			{:else if form.success === 'updated'}
 				Campaign changes saved and are visible on its public page.
 			{:else if form.success === 'paused'}
@@ -154,10 +192,87 @@
 				</div>
 			{:else}
 				<p class="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm" role="status">
-					This campaign is live and visible to supporters.
+					{#if data.campaign.promiseToPay?.accepted}
+						This campaign is awaiting moderation review before going live.
+					{:else}
+						This campaign cannot be published until you review and accept the Promise to Pay terms
+						below.
+					{/if}
 				</p>
 			{/if}
 
+			{#if data.campaign.promiseToPay}
+				<section
+					class="space-y-4 rounded-xl border bg-muted/20 p-5"
+					aria-labelledby="existing-promise-heading"
+				>
+					<div class="flex flex-wrap items-center justify-between gap-2">
+						<h3 id="existing-promise-heading" class="text-lg font-semibold">Promise to Pay</h3>
+						<span class="rounded-full border px-2.5 py-0.5 text-xs font-medium">
+							{data.campaign.promiseToPay.accepted ? 'Accepted' : 'Acceptance required'}
+						</span>
+					</div>
+					<div class="grid gap-3 sm:grid-cols-3">
+						<div class="rounded-lg border bg-background p-4">
+							<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+								Veterinary bill
+							</p>
+							<p class="mt-1 text-lg font-bold">
+								{formatCurrency(data.campaign.promiseToPay.billAmountCents)}
+							</p>
+						</div>
+						<div class="rounded-lg border bg-background p-4">
+							<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+								What TakeTheLead covers
+							</p>
+							<p class="mt-1 text-lg font-bold">
+								{formatCurrency(data.campaign.promiseToPay.ttlCoversCents)}
+							</p>
+						</div>
+						<div class="rounded-lg border bg-background p-4">
+							<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+								Maximum owner obligation
+							</p>
+							<p class="mt-1 text-lg font-bold">
+								{formatCurrency(data.campaign.promiseToPay.ownerMaxObligationCents)}
+							</p>
+						</div>
+					</div>
+					<div class="space-y-2 text-sm text-muted-foreground">
+						<p>
+							<strong class="text-foreground">What TakeTheLead covers:</strong>
+							{data.campaign.promiseToPay.ttlCoversText}
+						</p>
+						<p>
+							<strong class="text-foreground">Maximum owner obligation:</strong>
+							{data.campaign.promiseToPay.ownerObligationText}
+						</p>
+					</div>
+					{#if !data.campaign.promiseToPay.accepted}
+						<form method="POST" action="?/acceptPromise" class="space-y-4 border-t pt-4">
+							<input type="hidden" name="campaignId" value={data.campaign.id} />
+							<label class="flex items-start gap-3 rounded-lg border bg-background p-4 text-sm">
+								<input class="mt-0.5 size-4" type="checkbox" name="promiseAccepted" required />
+								<span>
+									I understand the veterinary bill ({formatCurrency(
+										data.campaign.promiseToPay.billAmountCents
+									)}), what TakeTheLead covers ({formatCurrency(
+										data.campaign.promiseToPay.ttlCoversCents
+									)}), and my maximum owner obligation ({formatCurrency(
+										data.campaign.promiseToPay.ownerMaxObligationCents
+									)}).
+								</span>
+							</label>
+							<button
+								class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+								type="submit"
+							>
+								Accept Promise to Pay terms
+							</button>
+						</form>
+					{/if}
+				</section>
+			{/if}
 			{#if editing || editErrorVisible}
 				<form method="POST" action="?/update" class="grid gap-4 border-t pt-6">
 					<input type="hidden" name="campaignId" value={data.campaign.id} />
@@ -287,6 +402,7 @@
 								class="rounded-md border bg-background px-3 py-2 font-normal"
 								name="petName"
 								maxlength="80"
+								value={form?.createDraft?.petName ?? ''}
 								required
 							/>
 						</label>
@@ -297,6 +413,7 @@
 								name="petSpecies"
 								maxlength="40"
 								placeholder="Dog, cat, etc."
+								value={form?.createDraft?.petSpecies ?? ''}
 								required
 							/>
 						</label>
@@ -307,6 +424,7 @@
 							class="rounded-md border bg-background px-3 py-2 font-normal"
 							name="petBreed"
 							maxlength="80"
+							value={form?.createDraft?.petBreed ?? ''}
 						/>
 					</label>
 					<label class="grid gap-2 text-sm font-medium">
@@ -314,6 +432,7 @@
 						<select
 							class="rounded-md border bg-background px-3 py-2 font-normal"
 							name="vetHospitalId"
+							bind:value={selectedHospitalId}
 							required
 						>
 							<option value="">Choose a hospital</option>
@@ -328,35 +447,62 @@
 							Choose an existing hospital or add one. New listings are unverified until reviewed.
 						</span>
 					</label>
-					<label class="grid gap-2 text-sm font-medium">
-						Hospital name (required when adding a hospital)
-						<input
-							class="rounded-md border bg-background px-3 py-2 font-normal"
-							name="hospitalName"
-							maxlength="160"
-						/>
-					</label>
-					<label class="grid gap-2 text-sm font-medium">
-						Hospital city (optional)
-						<input
-							class="rounded-md border bg-background px-3 py-2 font-normal"
-							name="hospitalCity"
-							maxlength="100"
-						/>
-					</label>
-					<label class="grid gap-2 text-sm font-medium sm:max-w-xs">
-						Veterinary bill (USD)
-						<input
-							class="rounded-md border bg-background px-3 py-2 font-normal"
-							name="billAmount"
-							type="number"
-							min="0.01"
-							max="1000000"
-							step="0.01"
-							inputmode="decimal"
-							required
-						/>
-					</label>
+					{#if selectedHospitalId === 'new'}
+						<div class="grid gap-4 sm:grid-cols-2">
+							<label class="grid gap-2 text-sm font-medium">
+								Hospital name
+								<input
+									class="rounded-md border bg-background px-3 py-2 font-normal"
+									name="hospitalName"
+									maxlength="160"
+									bind:value={customHospitalName}
+									required
+								/>
+							</label>
+							<label class="grid gap-2 text-sm font-medium">
+								Hospital city (optional)
+								<input
+									class="rounded-md border bg-background px-3 py-2 font-normal"
+									name="hospitalCity"
+									maxlength="100"
+									value={form?.createDraft?.hospitalCity ?? ''}
+								/>
+							</label>
+						</div>
+					{/if}
+					<div class="grid gap-4 sm:grid-cols-2">
+						<label class="grid gap-2 text-sm font-medium">
+							Veterinary bill (USD)
+							<input
+								class="rounded-md border bg-background px-3 py-2 font-normal"
+								name="billAmount"
+								type="number"
+								min="0.01"
+								max="1000000"
+								step="0.01"
+								inputmode="decimal"
+								bind:value={billInput}
+								required
+							/>
+						</label>
+						<label class="grid gap-2 text-sm font-medium">
+							What TakeTheLead covers (USD, optional)
+							<input
+								class="rounded-md border bg-background px-3 py-2 font-normal"
+								name="ttlCoversAmount"
+								type="number"
+								min="0"
+								max="1000000"
+								step="0.01"
+								inputmode="decimal"
+								placeholder="Defaults to full veterinary bill"
+								bind:value={ttlCoversInput}
+							/>
+							<span class="text-xs font-normal text-muted-foreground">
+								Leave blank if fundraising covers the entire bill, or enter a lower cap.
+							</span>
+						</label>
+					</div>
 				</fieldset>
 
 				<fieldset class="grid gap-4 border-t pt-5">
@@ -368,6 +514,7 @@
 							name="title"
 							minlength="3"
 							maxlength="120"
+							value={form?.createDraft?.title ?? ''}
 							required
 						/>
 					</label>
@@ -379,7 +526,8 @@
 							minlength="10"
 							maxlength="300"
 							rows="2"
-							required></textarea>
+							required>{form?.createDraft?.summary ?? ''}</textarea
+						>
 					</label>
 					<label class="grid gap-2 text-sm font-medium">
 						Campaign story
@@ -389,7 +537,8 @@
 							minlength="20"
 							maxlength="5000"
 							rows="5"
-							required></textarea>
+							required>{form?.createDraft?.story ?? ''}</textarea
+						>
 					</label>
 					<label class="grid gap-2 text-sm font-medium">
 						Campaign photo URL (optional, HTTPS)
@@ -397,8 +546,89 @@
 							class="rounded-md border bg-background px-3 py-2 font-normal"
 							name="coverImageUrl"
 							type="url"
+							value={form?.createDraft?.coverImageUrl ?? ''}
 							placeholder="https://example.com/pet-photo.jpg"
 						/>
+					</label>
+				</fieldset>
+
+				<fieldset
+					class="grid gap-4 rounded-xl border bg-muted/20 p-5"
+					aria-labelledby="promise-to-pay-legend"
+				>
+					<legend id="promise-to-pay-legend" class="px-1 text-lg font-semibold">
+						Promise to Pay — review before publishing
+					</legend>
+					<p class="text-sm text-muted-foreground">
+						Before your campaign can be published, review this plain-language summary of the
+						veterinary bill, what TakeTheLead covers, and the maximum amount you can still owe.
+					</p>
+
+					<div class="grid gap-3 sm:grid-cols-3">
+						<div class="rounded-lg border bg-background p-4">
+							<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+								1. Veterinary bill
+							</p>
+							<p class="mt-1 text-xl font-bold" data-testid="ptp-bill-amount">
+								{formatCurrency(billPreviewCents)}
+							</p>
+							<p class="mt-1 text-xs text-muted-foreground">
+								Total invoice or estimate at {selectedHospitalLabel}.
+							</p>
+						</div>
+						<div class="rounded-lg border bg-background p-4">
+							<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+								2. What TakeTheLead covers
+							</p>
+							<p class="mt-1 text-xl font-bold" data-testid="ptp-ttl-covers">
+								{formatCurrency(ttlCoversPreviewCents)}
+							</p>
+							<p class="mt-1 text-xs text-muted-foreground">
+								TakeTheLead pays {selectedHospitalLabel} directly as donations arrive, up to {formatCurrency(
+									ttlCoversPreviewCents
+								)}.
+							</p>
+						</div>
+						<div class="rounded-lg border bg-background p-4">
+							<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+								3. Maximum owner obligation
+							</p>
+							<p class="mt-1 text-xl font-bold" data-testid="ptp-owner-max">
+								{formatCurrency(ownerMaxPreviewCents)}
+							</p>
+							<p class="mt-1 text-xs text-muted-foreground">
+								{#if ownerMaxPreviewCents === 0}
+									You owe nothing ({formatCurrency(0)}) for this bill; TakeTheLead covers the full
+									bill amount.
+								{:else}
+									You owe at most {formatCurrency(ownerMaxPreviewCents)} — the portion of the bill not
+									covered by TakeTheLead.
+								{/if}
+							</p>
+						</div>
+					</div>
+
+					<input
+						type="hidden"
+						name="ownerMaxAmount"
+						value={(ownerMaxPreviewCents / 100).toFixed(2)}
+					/>
+
+					<label class="flex items-start gap-3 rounded-lg border bg-background p-4 text-sm">
+						<input
+							class="mt-0.5 size-4"
+							type="checkbox"
+							name="promiseAccepted"
+							bind:checked={promiseAccepted}
+							required
+						/>
+						<span>
+							<strong>I understand</strong> the veterinary bill ({formatCurrency(
+								billPreviewCents
+							)}), what TakeTheLead covers ({formatCurrency(ttlCoversPreviewCents)}), and my maximum
+							owner obligation ({formatCurrency(ownerMaxPreviewCents)}). I understand that my
+							campaign cannot be published without accepting these terms.
+						</span>
 					</label>
 				</fieldset>
 
