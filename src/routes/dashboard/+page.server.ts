@@ -1,15 +1,18 @@
-import { randomUUID } from 'node:crypto';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { db } from '$lib/server/db';
+import { auth } from '$lib/server/auth';
 import {
-	CAMPAIGN_DURATION_MS,
+	ActiveCampaignLimitError,
+	CampaignNotFoundError,
 	campaignEndDate,
-	closeExpiredCampaigns
+	closeExpiredCampaigns,
+	countCampaignDonors,
+	createPublishedCampaign,
+	findActiveCampaignForOwner,
+	listHospitalOptions,
+	updateCampaignContent
 } from '$lib/server/db/campaigns';
 import { setOwnerCampaignState, ValidationError } from '$lib/server/db/queries';
-
-const ACTIVE_CAMPAIGN_STATUSES = ['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PAUSED'];
 
 function parseMoneyCents(value: string) {
 	const normalized = value.trim();
@@ -80,31 +83,6 @@ function parseCampaignForm(form: FormData) {
 	};
 }
 
-async function countCampaignDonors(campaignId: string) {
-	const [members, namedGuests, anonymousGuestDonations] = await Promise.all([
-		db.donation.groupBy({
-			by: ['donorUserId'],
-			where: { campaignId, status: 'COMPLETED', donorUserId: { not: null } }
-		}),
-		db.donation.findMany({
-			where: {
-				campaignId,
-				status: 'COMPLETED',
-				donorUserId: null,
-				isAnonymous: false,
-				donorName: { not: null }
-			},
-			distinct: ['donorName'],
-			select: { donorName: true }
-		}),
-		db.donation.count({
-			where: { campaignId, status: 'COMPLETED', donorUserId: null, isAnonymous: true }
-		})
-	]);
-
-	return members.length + namedGuests.length + anonymousGuestDonations;
-}
-
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) redirect(303, '/login');
 
@@ -112,40 +90,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	await closeExpiredCampaigns(now, locals.user.id);
 
 	const [campaign, hospitals] = await Promise.all([
-		db.campaign.findFirst({
-			where: {
-				ownerId: locals.user.id,
-				status: { in: [...ACTIVE_CAMPAIGN_STATUSES] },
-				deletedAt: null
-			},
-			orderBy: { createdAt: 'desc' },
-			include: {
-				vetHospital: { select: { id: true, name: true, city: true } },
-				pets: {
-					where: { role: 'PRIMARY' },
-					include: { pet: { select: { id: true, name: true, species: true, breed: true } } }
-				},
-				donations: {
-					where: { status: 'COMPLETED', message: { not: null } },
-					orderBy: { completedAt: 'desc' },
-					take: 8,
-					select: {
-						id: true,
-						amountCents: true,
-						message: true,
-						isAnonymous: true,
-						donorName: true,
-						donorUser: { select: { name: true } },
-						completedAt: true
-					}
-				}
-			}
-		}),
-		db.vetHospital.findMany({
-			where: { deletedAt: null },
-			orderBy: [{ city: 'asc' }, { name: 'asc' }],
-			select: { id: true, name: true, city: true }
-		})
+		findActiveCampaignForOwner(locals.user.id),
+		listHospitalOptions()
 	]);
 
 	const campaignEnd =
@@ -208,82 +154,16 @@ export const actions: Actions = {
 
 		const now = new Date();
 		await closeExpiredCampaigns(now, locals.user.id);
-		const slug = `${
-			draft.title
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, '-')
-				.replace(/^-|-$/g, '')
-				.slice(0, 60) || 'campaign'
-		}-${randomUUID().slice(0, 8)}`;
 
 		try {
-			await db.$transaction(async (tx) => {
-				const activeCampaign = await tx.campaign.findFirst({
-					where: {
-						ownerId: userId,
-						status: { in: [...ACTIVE_CAMPAIGN_STATUSES] },
-						deletedAt: null
-					},
-					select: { id: true }
-				});
-				if (activeCampaign) {
-					throw new ValidationError('You may only have one active campaign at a time.');
-				}
-
-				let vetHospitalId: string;
-				if (draft.vetHospitalId === 'new') {
-					const hospital = await tx.vetHospital.create({
-						data: {
-							name: draft.hospitalName,
-							city: draft.hospitalCity || null,
-							createdById: userId,
-							isVerified: false
-						},
-						select: { id: true }
-					});
-					vetHospitalId = hospital.id;
-				} else {
-					const hospital = await tx.vetHospital.findFirst({
-						where: { id: draft.vetHospitalId, deletedAt: null },
-						select: { id: true }
-					});
-					if (!hospital) throw new ValidationError('Choose a listed veterinary hospital.');
-					vetHospitalId = hospital.id;
-				}
-
-				await tx.campaign.create({
-					data: {
-						slug,
-						title: draft.title,
-						summary: draft.summary,
-						body: draft.story,
-						coverImageUrl: draft.coverImageUrl,
-						goalAmountCents: draft.billAmountCents,
-						billAmountCents: draft.billAmountCents,
-						ownerId: userId,
-						vetHospitalId,
-						status: 'APPROVED',
-						visibility: 'PUBLIC',
-						publishedAt: now,
-						deadline: new Date(now.getTime() + CAMPAIGN_DURATION_MS),
-						pets: {
-							create: {
-								role: 'PRIMARY',
-								pet: {
-									create: {
-										name: draft.petName,
-										species: draft.petSpecies,
-										breed: draft.petBreed || null,
-										ownerId: userId
-									}
-								}
-							}
-						}
-					}
-				});
-			});
+			await createPublishedCampaign(userId, draft);
 		} catch (error) {
-			if (error instanceof ValidationError) return fail(409, { error: error.message });
+			if (error instanceof ActiveCampaignLimitError) {
+				return fail(409, { error: error.message });
+			}
+			if (error instanceof CampaignNotFoundError) {
+				return fail(400, { error: 'Choose a listed veterinary hospital.' });
+			}
 			throw error;
 		}
 
@@ -315,19 +195,11 @@ export const actions: Actions = {
 			});
 		}
 
-		const updated = await db.campaign.updateMany({
-			where: {
-				id: campaignId,
-				ownerId: locals.user.id,
-				status: { in: [...ACTIVE_CAMPAIGN_STATUSES] },
-				deletedAt: null
-			},
-			data: {
-				title,
-				summary,
-				body: story,
-				coverImageUrl: coverImageUrl || null
-			}
+		const updated = await updateCampaignContent(campaignId, locals.user.id, {
+			title,
+			summary,
+			body: story,
+			coverImageUrl: coverImageUrl || null
 		});
 		if (updated.count !== 1) {
 			return fail(404, {
@@ -369,6 +241,10 @@ export const actions: Actions = {
 			if (error instanceof ValidationError) return fail(409, { error: error.message });
 			throw error;
 		}
+	},
+	signOut: async ({ request }) => {
+		await auth.api.signOut({ headers: request.headers });
+		redirect(303, '/');
 	}
 };
 

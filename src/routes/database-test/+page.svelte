@@ -21,6 +21,7 @@
 	const promiseFlash = $derived(banner(flashes.promise));
 	const moderationFlash = $derived(banner(flashes.moderation));
 	const recomputeFlash = $derived(banner(flashes.recompute));
+	const authFlash = $derived(banner(flashes.auth));
 
 	const money = (cents: number | null | undefined) =>
 		cents === null || cents === undefined ? '—' : `$${(cents / 100).toFixed(2)}`;
@@ -55,7 +56,8 @@
 		</p>
 		<p class="text-xs text-slate-500">
 			Reset everything with <code class="rounded bg-slate-100 px-1">npm run db:reset</code>. Demo
-			logins use the password in <code class="rounded bg-slate-100 px-1">prisma/seed-data.ts</code>.
+			logins (see section 8) sign in at <a class="underline" href={resolve('/login')}>/login</a>
+			with the password in <code class="rounded bg-slate-100 px-1">prisma/seed-data.ts</code>.
 		</p>
 	</header>
 
@@ -727,9 +729,100 @@
 		</form>
 	</section>
 
-	<!-- ================= Users ================= -->
+	<!-- ================= Users, accounts & sessions ================= -->
 	<section class="space-y-3">
-		<h2 class="text-lg font-semibold">8. Demo users</h2>
+		<h2 class="text-lg font-semibold">8. Members, accounts &amp; sessions (TTL-209)</h2>
+		<p class="text-slate-600">
+			The better-auth tables behind sign-up/sign-in/sign-out. Passwords live in the
+			<code class="rounded bg-slate-100 px-1">account</code> table as scrypt hashes — the preview
+			below proves the stored value is a hash, never the plain password. The live forms call the
+			same
+			<code class="rounded bg-slate-100 px-1">auth.api</code> the real
+			<code class="rounded bg-slate-100 px-1">/login</code> page uses, and they set the real session
+			cookie, so signing in here also signs this browser into
+			<code class="rounded bg-slate-100 px-1">/dashboard</code>.
+		</p>
+
+		{#if authFlash}
+			<p
+				class="rounded border p-2 {authFlash.ok
+					? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+					: 'border-rose-300 bg-rose-50 text-rose-900'}"
+			>
+				<strong>{authFlash.title}.</strong>
+				{authFlash.detail}
+			</p>
+		{/if}
+
+		<div class="grid gap-3 md:grid-cols-3">
+			<form
+				method="post"
+				action="?/benchSignUp"
+				use:enhance
+				class="space-y-2 rounded border border-slate-200 p-3"
+			>
+				<h3 class="font-medium">Sign up (live)</h3>
+				<input
+					name="name"
+					placeholder="Name"
+					class="w-full rounded border border-slate-300 px-2 py-1"
+				/>
+				<input
+					name="email"
+					placeholder="you@example.com"
+					class="w-full rounded border border-slate-300 px-2 py-1"
+				/>
+				<input
+					name="password"
+					type="password"
+					placeholder="Password (min 8)"
+					class="w-full rounded border border-slate-300 px-2 py-1"
+				/>
+				<button class="rounded bg-slate-900 px-3 py-1.5 text-white hover:bg-slate-700">
+					signUpEmail
+				</button>
+			</form>
+
+			<form
+				method="post"
+				action="?/benchSignIn"
+				use:enhance
+				class="space-y-2 rounded border border-slate-200 p-3"
+			>
+				<h3 class="font-medium">Sign in (live)</h3>
+				<input
+					name="email"
+					value="seed_maria@takethelead.dev"
+					class="w-full rounded border border-slate-300 px-2 py-1"
+				/>
+				<input
+					name="password"
+					type="password"
+					placeholder="Seed password"
+					class="w-full rounded border border-slate-300 px-2 py-1"
+				/>
+				<button class="rounded bg-slate-900 px-3 py-1.5 text-white hover:bg-slate-700">
+					signInEmail
+				</button>
+			</form>
+
+			<form
+				method="post"
+				action="?/benchSignOut"
+				use:enhance
+				class="space-y-2 rounded border border-slate-200 p-3"
+			>
+				<h3 class="font-medium">Sign out (live)</h3>
+				<p class="text-xs text-slate-500">
+					Deletes this browser's session row and clears its cookie.
+				</p>
+				<button class="rounded border border-slate-300 px-3 py-1.5 hover:bg-slate-100">
+					signOut
+				</button>
+			</form>
+		</div>
+
+		<h3 class="pt-2 font-medium">Users</h3>
 		<table class="w-full text-left">
 			<thead class="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
 				<tr>
@@ -746,6 +839,71 @@
 						<td class="p-2">{u.name}</td>
 						<td class="p-2 text-xs">{u.email}</td>
 						<td class="p-2">{u.isModerator ? 'yes' : '—'}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+
+		<h3 class="pt-2 font-medium">Credential accounts (hashed passwords)</h3>
+		<table class="w-full text-left">
+			<thead class="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
+				<tr>
+					<th class="p-2">account.id</th>
+					<th class="p-2">User</th>
+					<th class="p-2">Provider</th>
+					<th class="p-2">Stored password (scrypt hash preview)</th>
+					<th class="p-2">Created</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each data.accounts as a (a.id)}
+					<tr class="border-t border-slate-100">
+						<td class="p-2 font-mono text-xs">{a.id}</td>
+						<td class="p-2 font-mono text-xs">{a.userId}</td>
+						<td class="p-2">{a.providerId}</td>
+						<td class="p-2 font-mono text-xs break-all">
+							{#if a.passwordPreview}
+								<span class="rounded bg-emerald-100 px-1 text-emerald-800">hashed</span>
+								{a.passwordPreview}
+							{:else}
+								<span class="text-slate-500">no password (oauth?)</span>
+							{/if}
+						</td>
+						<td class="p-2 text-xs">{a.createdAt}</td>
+					</tr>
+				{:else}
+					<tr>
+						<td class="p-3 text-slate-500" colspan={5}>No account rows yet.</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+
+		<h3 class="pt-2 font-medium">Active sessions ({data.sessions.length})</h3>
+		<table class="w-full text-left">
+			<thead class="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
+				<tr>
+					<th class="p-2">User</th>
+					<th class="p-2">Created</th>
+					<th class="p-2">Expires</th>
+					<th class="p-2">IP</th>
+					<th class="p-2">User agent</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each data.sessions as s (s.id)}
+					<tr class="border-t border-slate-100">
+						<td class="p-2">{s.userName}</td>
+						<td class="p-2 text-xs">{s.createdAt}</td>
+						<td class="p-2 text-xs">{s.expiresAt.slice(0, 16).replace('T', ' ')}</td>
+						<td class="p-2 font-mono text-xs">{s.ipAddress ?? '—'}</td>
+						<td class="p-2 text-xs text-slate-500">{s.userAgent ?? '—'}</td>
+					</tr>
+				{:else}
+					<tr>
+						<td class="p-3 text-slate-500" colspan={5}>
+							No unexpired sessions. Sign in above to create one.
+						</td>
 					</tr>
 				{/each}
 			</tbody>

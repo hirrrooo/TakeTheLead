@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import type { PageProps } from './$types';
 
@@ -45,7 +46,17 @@
 
 <main class="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-12 md:py-16">
 	<header class="space-y-3">
-		<p class="text-sm font-semibold tracking-wide text-primary uppercase">Take The Lead</p>
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<p class="text-sm font-semibold tracking-wide text-primary uppercase">Take The Lead</p>
+			<form method="post" action="?/signOut" use:enhance>
+				<button
+					class="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+					type="submit"
+				>
+					Sign out
+				</button>
+			</form>
+		</div>
 		<h1>Welcome, {data.user.name}</h1>
 		<p class="text-muted-foreground">
 			Manage your pet's care campaign and keep supporters updated.
