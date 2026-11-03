@@ -141,8 +141,8 @@ export const seedHospitals: SeedHospital[] = [
 		notes:
 			'The region\u2019s only true 24/7/365 emergency hospital. After-hours primary care is the sister practice, Bay Beach Veterinary Hospital.',
 		isVerified: true,
-		latitude: 36.0821,
-		longitude: -76.1243,
+		latitude: 36.7543,
+		longitude: -76.0638,
 		createdById: 'seed_mod'
 	},
 	{
