@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		ArrowLeft,
 		CircleCheck,
@@ -25,7 +27,7 @@
 	type Status = 'idle' | 'submitting' | 'success';
 
 	let { form }: PageProps = $props();
-	let mode = $state<Mode>('signin');
+	let mode = $state<Mode>(page.url.searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
 	let status = $state<Status>('idle');
 
 	// Sign-in fields
@@ -62,6 +64,11 @@
 		'bg-accent',
 		'bg-primary'
 	] as const;
+
+	// The header links here with ?mode=signup, including while this page is already open.
+	afterNavigate(({ to }) => {
+		if (to) switchMode(to.url.searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
+	});
 
 	function switchMode(next: Mode) {
 		if (mode === next) return;
@@ -130,7 +137,7 @@
 		<PawPrint
 			class="pointer-events-none absolute -right-16 -bottom-16 size-96 rotate-12 opacity-[0.06]"
 		/>
-		<a href={resolve('/')} class="inline-flex items-center gap-3">
+		<a href={resolve('/campaign')} class="inline-flex items-center gap-3">
 			<span class="flex size-11 items-center justify-center rounded-xl bg-background">
 				<img src="/ttl-logo.svg" alt="" class="size-7" />
 			</span>
@@ -172,7 +179,7 @@
 	<section class="flex flex-1 items-center justify-center bg-background px-4 py-10 sm:px-8">
 		<div class="w-full max-w-md">
 			<a
-				href={resolve('/')}
+				href={resolve('/campaign')}
 				class="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground lg:hidden"
 			>
 				<img src="/ttl-logo.svg" alt="" class="size-6" />

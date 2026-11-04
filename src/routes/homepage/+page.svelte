@@ -68,28 +68,6 @@
 </svelte:head>
 
 <main class="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-10 md:py-14">
-	<!-- Top bar with Login link (in case a member bypassed the login process) -->
-	<header class="flex flex-wrap items-center justify-between gap-4">
-		<a href={resolve('/')} class="inline-flex items-center gap-2.5">
-			<span class="flex size-10 items-center justify-center rounded-xl bg-primary">
-				<img src="/ttl-logo.svg" alt="" class="size-6" />
-			</span>
-			<span class="font-heading text-lg font-bold">Take the Lead</span>
-		</a>
-		<div class="flex items-center gap-3">
-			{#if isMember}
-				<span class="hidden text-sm text-muted-foreground sm:inline">
-					Signed in as {data.user?.name}
-				</span>
-				<form method="POST" action="?/signOut">
-					<Button variant="outline" type="submit">Logout</Button>
-				</form>
-			{:else}
-				<Button variant="outline" href={resolve('/login')}>Login</Button>
-			{/if}
-		</div>
-	</header>
-
 	<!-- Welcome + center-top campaign button -->
 	<section class="flex flex-col items-center gap-6 text-center">
 		<span
@@ -382,8 +360,4 @@
 			</div>
 		{/if}
 	</section>
-
-	<footer class="border-t pt-6 text-center text-xs text-muted-foreground">
-		© {new Date().getFullYear()} Take the Lead. Every stride counts for a pet in need.
-	</footer>
 </main>
