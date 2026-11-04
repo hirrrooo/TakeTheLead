@@ -7,6 +7,7 @@ import {
 	CampaignNotFoundError,
 	campaignEndDate,
 	closeExpiredCampaigns,
+	listRecentDonors,
 	countCampaignDonors,
 	createPublishedCampaign,
 	findActiveCampaignForOwner,
@@ -168,6 +169,38 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const campaignEnd =
 		campaign && ['APPROVED', 'PAUSED'].includes(campaign.status) ? campaignEndDate(campaign) : null;
 	const donorCount = campaign ? await countCampaignDonors(campaign.id) : 0;
+	const recentDonors = campaign
+		? await listRecentDonors(campaign.id, 8, { includePrivateMessages: true })
+		: [];
+
+	// Once a campaign passes 30 days it is CLOSED and no longer "active"; keep its
+	// final totals visible so the owner sees how it finished.
+	const endedRow = campaign
+		? null
+		: await db.campaign.findFirst({
+				where: { ownerId: locals.user.id, status: 'CLOSED', deletedAt: null },
+				orderBy: { closedAt: 'desc' },
+				select: {
+					id: true,
+					slug: true,
+					title: true,
+					raisedCents: true,
+					billAmountCents: true,
+					goalAmountCents: true,
+					closedAt: true
+				}
+			});
+	const endedCampaign = endedRow
+		? {
+				slug: endedRow.slug,
+				title: endedRow.title,
+				raisedCents: endedRow.raisedCents,
+				goalCents: endedRow.goalAmountCents ?? endedRow.billAmountCents ?? 0,
+				endedAt: (endedRow.closedAt ?? now).toISOString(),
+				donorCount: await countCampaignDonors(endedRow.id),
+				recentDonors: await listRecentDonors(endedRow.id, 8, { includePrivateMessages: true })
+			}
+		: null;
 
 	return {
 		user: {
@@ -176,6 +209,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		},
 		hospitals,
 		now: now.toISOString(),
+		endedCampaign,
+		recentDonors,
 		campaign: campaign
 			? {
 					id: campaign.id,
@@ -223,6 +258,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 								donation.donorName?.split(/\s+/)[0] ??
 								'Supporter'),
 						amountCents: donation.amountCents,
+						isPrivate: donation.isMessagePrivate,
 						createdAt: (donation.completedAt ?? now).toISOString()
 					}))
 				}

@@ -1,47 +1,31 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { normalizeSearchQuery } from '$lib/server/db/campaign-search';
+import { listPendingCampaignsForOwner } from '$lib/server/db/browse';
 import {
-	CAMPAIGN_DURATION_MS,
 	ActiveCampaignLimitError,
 	closeExpiredCampaigns,
 	createCampaign,
+	getPlatformTotals,
+	listPublicCampaigns,
+	listRecentPublicDonors,
 	parseCampaignDraft
 } from '$lib/server/db/campaigns';
-import {
-	getBrowseTotals,
-	listBrowseCampaigns,
-	listPendingCampaignsForOwner,
-	listRecentPublicDonations
-} from '$lib/server/db/browse';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	const now = new Date();
-	await closeExpiredCampaigns(now);
+	const query = normalizeSearchQuery(url.searchParams.get('q'));
 
-	const [campaigns, totals, recentDonations, myPendingCampaigns] = await Promise.all([
-		listBrowseCampaigns(now),
-		getBrowseTotals(now),
-		listRecentPublicDonations(10),
+	const [campaigns, totals, recentDonors, myPendingCampaigns] = await Promise.all([
+		listPublicCampaigns(now, 50, query),
+		getPlatformTotals(now),
+		listRecentPublicDonors(10),
 		locals.user ? listPendingCampaignsForOwner(locals.user.id) : Promise.resolve([])
 	]);
 
 	return {
-		campaigns: campaigns.map((campaign) => ({
-			id: campaign.id,
-			slug: campaign.slug,
-			title: campaign.title,
-			summary: campaign.summary ?? campaign.body,
-			status: campaign.status === 'CLOSED' ? 'ended' : 'live',
-			startDate: (campaign.publishedAt ?? campaign.createdAt).toISOString(),
-			endDate: (
-				campaign.deadline ??
-				new Date((campaign.publishedAt ?? campaign.createdAt).getTime() + CAMPAIGN_DURATION_MS)
-			).toISOString(),
-			goalCents: campaign.goalAmountCents ?? 0,
-			raisedCents: campaign.raisedCents,
-			donorCount: campaign._count.donations,
-			ownerName: campaign.owner.name ?? 'A Take the Lead member'
-		})),
+		campaigns,
+		query,
 		myPendingCampaigns: myPendingCampaigns.map((campaign) => ({
 			slug: campaign.slug,
 			title: campaign.title,
@@ -49,21 +33,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			endDate: campaign.deadline?.toISOString() ?? null,
 			ended: campaign.deadline !== null && campaign.deadline <= now
 		})),
-		totals: {
-			liveCampaigns: totals.liveCampaigns,
-			raisedCents: totals.raisedCents,
-			donations: totals.donationCount
-		},
-		recentDonors: recentDonations.map((donation) => ({
-			id: donation.id,
-			name: donation.isAnonymous
-				? 'Anonymous'
-				: (donation.donorName ?? donation.donorUser?.name ?? 'Supporter'),
-			amountCents: donation.amountCents,
-			campaignTitle: donation.campaign.title,
-			slug: donation.campaign.slug,
-			createdAt: donation.createdAt.toISOString()
-		})),
+		totals,
+		recentDonors,
 		user: locals.user ? { id: locals.user.id, name: locals.user.name } : null
 	};
 };

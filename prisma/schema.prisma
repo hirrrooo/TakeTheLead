@@ -167,6 +167,7 @@ model Campaign {
   promiseToPay PromiseToPay?
 
   @@index([status, visibility, createdAt])
+  @@index([status, deadline])
   @@index([ownerId])
   @@index([vetHospitalId])
   @@map("campaign")
@@ -243,6 +244,8 @@ model Donation {
   providerRef String? @unique
 
   message       String?
+  /// true = only the campaign owner can read the message; false = shown on the public page
+  isMessagePrivate Boolean @default(false)
   receiptNumber String?   @unique
   createdAt     DateTime  @default(now())
   completedAt   DateTime?
@@ -252,6 +255,7 @@ model Donation {
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, status])
+  @@index([campaignId, status, completedAt])
   @@index([donorUserId])
   @@index([status, createdAt])
   @@map("donation")

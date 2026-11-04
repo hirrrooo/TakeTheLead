@@ -162,10 +162,43 @@
 		</section>
 	{/if}
 
-	<section class="space-y-4">
-		<h2 class="text-2xl font-semibold">Campaigns</h2>
+	<section class="space-y-4" aria-labelledby="campaigns-heading">
+		<h2 id="campaigns-heading" class="text-2xl font-semibold">Campaigns</h2>
+
+		<form method="GET" action={resolve('/campaign')} role="search" class="flex flex-wrap gap-2">
+			<label class="sr-only" for="campaign-search">Search campaigns</label>
+			<input
+				id="campaign-search"
+				class="min-w-0 flex-1 rounded-md border bg-background px-3 py-2"
+				type="search"
+				name="q"
+				value={data.query}
+				maxlength="80"
+				placeholder="Search by pet, story, hospital, or organizer"
+			/>
+			<button class="rounded-md bg-primary px-4 py-2 text-primary-foreground" type="submit">
+				Search
+			</button>
+			{#if data.query}
+				<a class="inline-flex items-center rounded-md border px-4 py-2" href={resolve('/campaign')}>
+					Clear
+				</a>
+			{/if}
+		</form>
+
+		{#if data.query}
+			<p class="text-sm text-muted-foreground" role="status">
+				{data.campaigns.length}
+				{data.campaigns.length === 1 ? 'campaign' : 'campaigns'} matching “{data.query}”
+			</p>
+		{/if}
+
 		{#if data.campaigns.length === 0}
-			<p class="rounded-lg border p-6 text-muted-foreground">There are no public campaigns yet.</p>
+			<p class="rounded-lg border p-6 text-muted-foreground">
+				{data.query
+					? 'No campaigns match your search. Try a different word, like a pet name or hospital.'
+					: 'There are no public campaigns yet.'}
+			</p>
 		{:else}
 			<ul class="grid gap-4 md:grid-cols-2">
 				{#each data.campaigns as campaign (campaign.id)}
