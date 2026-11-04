@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { auth } from '$lib/server/auth';
+import { db } from '$lib/server/db';
 import {
 	ActiveCampaignLimitError,
 	CampaignNotFoundError,
@@ -12,7 +13,12 @@ import {
 	listHospitalOptions,
 	updateCampaignContent
 } from '$lib/server/db/campaigns';
-import { setOwnerCampaignState, ValidationError } from '$lib/server/db/queries';
+import {
+	acceptPromiseToPay,
+	buildPromiseToPayTexts,
+	setOwnerCampaignState,
+	ValidationError
+} from '$lib/server/db/queries';
 
 function parseMoneyCents(value: string) {
 	const normalized = value.trim();
@@ -23,19 +29,52 @@ function parseMoneyCents(value: string) {
 	return Number.isSafeInteger(amount) && amount > 0 && amount <= 100_000_000 ? amount : null;
 }
 
-function parseCampaignForm(form: FormData) {
-	const title = String(form.get('title') ?? '').trim();
-	const summary = String(form.get('summary') ?? '').trim();
-	const story = String(form.get('story') ?? '').trim();
-	const billAmountCents = parseMoneyCents(String(form.get('billAmount') ?? ''));
-	const petName = String(form.get('petName') ?? '').trim();
-	const petSpecies = String(form.get('petSpecies') ?? '').trim();
-	const petBreed = String(form.get('petBreed') ?? '').trim();
-	const vetHospitalId = String(form.get('vetHospitalId') ?? '').trim();
-	const hospitalName = String(form.get('hospitalName') ?? '').trim();
-	const hospitalCity = String(form.get('hospitalCity') ?? '').trim();
-	const coverImageUrl = String(form.get('coverImageUrl') ?? '').trim();
+function parseNonNegativeMoneyCents(value: string) {
+	const normalized = value.trim();
+	if (!/^\d{1,7}(?:\.\d{1,2})?$/.test(normalized)) return null;
 
+	const [dollars, cents = ''] = normalized.split('.');
+	const amount = Number(dollars) * 100 + Number(cents.padEnd(2, '0'));
+	return Number.isSafeInteger(amount) && amount >= 0 && amount <= 100_000_000 ? amount : null;
+}
+
+function extractCreateDraft(form: FormData) {
+	return {
+		title: String(form.get('title') ?? '').trim(),
+		summary: String(form.get('summary') ?? '').trim(),
+		story: String(form.get('story') ?? '').trim(),
+		billAmount: String(form.get('billAmount') ?? '').trim(),
+		ttlCoversAmount: String(form.get('ttlCoversAmount') ?? '').trim(),
+		ownerMaxAmount: String(form.get('ownerMaxAmount') ?? '').trim(),
+		petName: String(form.get('petName') ?? '').trim(),
+		petSpecies: String(form.get('petSpecies') ?? '').trim(),
+		petBreed: String(form.get('petBreed') ?? '').trim(),
+		vetHospitalId: String(form.get('vetHospitalId') ?? '').trim(),
+		hospitalName: String(form.get('hospitalName') ?? '').trim(),
+		hospitalCity: String(form.get('hospitalCity') ?? '').trim(),
+		coverImageUrl: String(form.get('coverImageUrl') ?? '').trim()
+	};
+}
+
+function parseCampaignForm(form: FormData) {
+	const raw = extractCreateDraft(form);
+	const {
+		title,
+		summary,
+		story,
+		billAmount,
+		ttlCoversAmount,
+		ownerMaxAmount,
+		petName,
+		petSpecies,
+		petBreed,
+		vetHospitalId,
+		hospitalName,
+		hospitalCity,
+		coverImageUrl
+	} = raw;
+
+	const billAmountCents = parseMoneyCents(billAmount);
 	if (
 		title.length < 3 ||
 		title.length > 120 ||
@@ -51,35 +90,67 @@ function parseCampaignForm(form: FormData) {
 		petBreed.length > 80 ||
 		!vetHospitalId
 	) {
-		return null;
+		return { ok: false as const, reason: 'fields' as const, createDraft: raw };
 	}
 	if (
 		vetHospitalId === 'new' &&
 		(hospitalName.length < 2 || hospitalName.length > 160 || hospitalCity.length > 100)
 	) {
-		return null;
+		return { ok: false as const, reason: 'fields' as const, createDraft: raw };
 	}
 
 	if (coverImageUrl) {
 		try {
-			if (new URL(coverImageUrl).protocol !== 'https:') return null;
+			if (new URL(coverImageUrl).protocol !== 'https:') {
+				return { ok: false as const, reason: 'fields' as const, createDraft: raw };
+			}
 		} catch {
-			return null;
+			return { ok: false as const, reason: 'fields' as const, createDraft: raw };
 		}
 	}
 
+	const ttlCoversCents =
+		ttlCoversAmount === '' ? billAmountCents : parseNonNegativeMoneyCents(ttlCoversAmount);
+	if (ttlCoversCents === null || ttlCoversCents > billAmountCents) {
+		return { ok: false as const, reason: 'promise_amounts' as const, createDraft: raw };
+	}
+
+	const ownerMaxObligationCents =
+		ownerMaxAmount === ''
+			? billAmountCents - ttlCoversCents
+			: parseNonNegativeMoneyCents(ownerMaxAmount);
+	if (
+		ownerMaxObligationCents === null ||
+		ttlCoversCents + ownerMaxObligationCents !== billAmountCents
+	) {
+		return { ok: false as const, reason: 'promise_amounts' as const, createDraft: raw };
+	}
+
+	const promiseAcceptedVal = form.get('promiseAccepted');
+	const promiseAccepted = promiseAcceptedVal === 'on' || promiseAcceptedVal === 'true';
+	if (!promiseAccepted) {
+		return { ok: false as const, reason: 'promise_unaccepted' as const, createDraft: raw };
+	}
+
 	return {
-		title,
-		summary,
-		story,
-		billAmountCents,
-		petName,
-		petSpecies,
-		petBreed,
-		vetHospitalId,
-		hospitalName,
-		hospitalCity,
-		coverImageUrl: coverImageUrl || null
+		ok: true as const,
+		createDraft: raw,
+		draft: {
+			title,
+			summary,
+			story,
+			billAmountCents,
+			ttlCoversCents,
+			ownerMaxObligationCents,
+			promiseAccepted: true as const,
+			petName,
+			petSpecies,
+			petBreed,
+			vetHospitalId,
+			hospitalName,
+			hospitalCity,
+			coverImageUrl: coverImageUrl || null
+		}
 	};
 }
 
@@ -114,7 +185,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 					story: campaign.body,
 					coverImageUrl: campaign.coverImageUrl,
 					status: campaign.status,
-					billAmountCents: campaign.billAmountCents ?? campaign.goalAmountCents ?? 0,
+					billAmountCents:
+						campaign.promiseToPay?.billAmountCents ??
+						campaign.billAmountCents ??
+						campaign.goalAmountCents ??
+						0,
+					goalAmountCents: campaign.goalAmountCents ?? campaign.billAmountCents ?? 0,
 					raisedCents: campaign.raisedCents,
 					donorCount,
 					startDate: (campaign.publishedAt ?? campaign.createdAt).toISOString(),
@@ -124,6 +200,20 @@ export const load: PageServerLoad = async ({ locals }) => {
 						: null,
 					hospital: campaign.vetHospital,
 					pet: campaign.pets[0]?.pet ?? null,
+					promiseToPay: campaign.promiseToPay
+						? {
+								id: campaign.promiseToPay.id,
+								billAmountCents: campaign.promiseToPay.billAmountCents,
+								ttlCoversCents:
+									campaign.promiseToPay.ttlCoversCents ?? campaign.promiseToPay.billAmountCents,
+								ownerMaxObligationCents: campaign.promiseToPay.ownerMaxObligationCents,
+								ttlCoversText: campaign.promiseToPay.ttlCoversText,
+								ownerObligationText: campaign.promiseToPay.ownerObligationText,
+								accepted: campaign.promiseToPay.accepted,
+								acceptedAt: campaign.promiseToPay.acceptedAt?.toISOString() ?? null,
+								termsVersion: campaign.promiseToPay.termsVersion
+							}
+						: null,
 					messages: campaign.donations.map((donation) => ({
 						id: donation.id,
 						text: donation.message ?? '',
@@ -144,30 +234,113 @@ export const actions: Actions = {
 	create: async ({ request, locals }) => {
 		if (!locals.user) redirect(303, '/login');
 		const userId = locals.user.id;
-		const draft = parseCampaignForm(await request.formData());
-		if (!draft) {
+		const parsed = parseCampaignForm(await request.formData());
+		if (!parsed.ok) {
+			if (parsed.reason === 'promise_unaccepted') {
+				return fail(400, {
+					error:
+						'You must check "I understand" to accept the Promise to Pay terms before publishing your campaign.',
+					createDraft: parsed.createDraft
+				});
+			}
+			if (parsed.reason === 'promise_amounts') {
+				return fail(400, {
+					error:
+						'What TakeTheLead covers plus your maximum owner obligation must equal the total veterinary bill.',
+					createDraft: parsed.createDraft
+				});
+			}
 			return fail(400, {
 				error:
-					'Complete the pet, hospital, bill, campaign title, short description, and story with valid details.'
+					'Complete the pet, hospital, bill, campaign title, short description, and story with valid details.',
+				createDraft: parsed.createDraft
 			});
 		}
 
+		const { draft } = parsed;
 		const now = new Date();
 		await closeExpiredCampaigns(now, locals.user.id);
 
 		try {
 			await createPublishedCampaign(userId, draft);
 		} catch (error) {
-			if (error instanceof ActiveCampaignLimitError) {
-				return fail(409, { error: error.message });
+			if (error instanceof ActiveCampaignLimitError || error instanceof ValidationError) {
+				return fail(409, { error: error.message, createDraft: parsed.createDraft });
 			}
 			if (error instanceof CampaignNotFoundError) {
-				return fail(400, { error: 'Choose a listed veterinary hospital.' });
+				return fail(400, {
+					error: 'Choose a listed veterinary hospital.',
+					createDraft: parsed.createDraft
+				});
 			}
 			throw error;
 		}
 
 		return { success: 'published' };
+	},
+	acceptPromise: async ({ request, locals }) => {
+		if (!locals.user) redirect(303, '/login');
+		const userId = locals.user.id;
+		const form = await request.formData();
+		const campaignId = String(form.get('campaignId') ?? '').trim();
+		const promiseAcceptedVal = form.get('promiseAccepted');
+		const promiseAccepted = promiseAcceptedVal === 'on' || promiseAcceptedVal === 'true';
+
+		if (!campaignId) {
+			return fail(400, { error: 'Campaign not found.' });
+		}
+		if (!promiseAccepted) {
+			return fail(400, {
+				error:
+					'You must check "I understand" to accept the Promise to Pay terms before publishing your campaign.'
+			});
+		}
+
+		const existing = await db.campaign.findFirst({
+			where: { id: campaignId, ownerId: userId, deletedAt: null },
+			include: {
+				vetHospital: { select: { name: true } },
+				promiseToPay: true
+			}
+		});
+		if (!existing) {
+			return fail(404, { error: 'Campaign not found.' });
+		}
+
+		const billAmountCents =
+			existing.promiseToPay?.billAmountCents ??
+			existing.billAmountCents ??
+			existing.goalAmountCents ??
+			0;
+		const ttlCoversCents =
+			existing.promiseToPay?.ttlCoversCents ?? existing.goalAmountCents ?? billAmountCents;
+		const ownerMaxObligationCents =
+			existing.promiseToPay?.ownerMaxObligationCents ??
+			Math.max(0, billAmountCents - ttlCoversCents);
+		const defaults = buildPromiseToPayTexts({
+			billAmountCents,
+			ttlCoversCents,
+			ownerMaxObligationCents,
+			hospitalName: existing.vetHospital?.name
+		});
+
+		try {
+			await acceptPromiseToPay({
+				campaignId,
+				userId,
+				billAmountCents,
+				ttlCoversCents,
+				ownerMaxObligationCents,
+				ttlCoversText: existing.promiseToPay?.ttlCoversText || defaults.ttlCoversText,
+				ownerObligationText:
+					existing.promiseToPay?.ownerObligationText || defaults.ownerObligationText
+			});
+		} catch (error) {
+			if (error instanceof ValidationError) return fail(400, { error: error.message });
+			throw error;
+		}
+
+		return { success: 'promise_accepted' };
 	},
 	update: async ({ request, locals }) => {
 		if (!locals.user) redirect(303, '/login');

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { db } from '$lib/server/db';
+import { buildPromiseToPayTexts, ValidationError } from './queries';
 import type { Campaign } from '../../../generated/prisma/client';
 
 export const CAMPAIGN_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -178,6 +179,9 @@ export interface PublishedCampaignDraft {
 	summary: string;
 	story: string;
 	billAmountCents: number;
+	ttlCoversCents: number;
+	ownerMaxObligationCents: number;
+	promiseAccepted: boolean;
 	petName: string;
 	petSpecies: string;
 	petBreed?: string | null;
@@ -190,11 +194,18 @@ export interface PublishedCampaignDraft {
 
 /**
  * Create a campaign that is live immediately (the owner-facing flow), together
- * with its primary pet and, when asked, a new directory hospital. One active
- * campaign per owner is enforced inside the same transaction, so two parallel
- * submits cannot both publish.
+ * with its primary pet, accepted promise to pay and, when asked, a new directory
+ * hospital. One active campaign per owner is enforced inside the same transaction,
+ * so two parallel submits cannot both publish.
  */
 export async function createPublishedCampaign(ownerId: string, draft: PublishedCampaignDraft) {
+	if (
+		!draft.promiseAccepted ||
+		draft.ttlCoversCents + draft.ownerMaxObligationCents !== draft.billAmountCents
+	) {
+		throw new ValidationError('Campaign cannot be published without an accepted Promise to Pay.');
+	}
+
 	const now = new Date();
 	const slug = `${
 		draft.title
@@ -216,6 +227,7 @@ export async function createPublishedCampaign(ownerId: string, draft: PublishedC
 		if (activeCampaign) throw new ActiveCampaignLimitError();
 
 		let vetHospitalId: string;
+		let resolvedHospitalName: string;
 		if (draft.vetHospitalId === 'new') {
 			const hospital = await tx.vetHospital.create({
 				data: {
@@ -224,17 +236,26 @@ export async function createPublishedCampaign(ownerId: string, draft: PublishedC
 					createdById: ownerId,
 					isVerified: false
 				},
-				select: { id: true }
+				select: { id: true, name: true }
 			});
 			vetHospitalId = hospital.id;
+			resolvedHospitalName = hospital.name;
 		} else {
 			const hospital = await tx.vetHospital.findFirst({
 				where: { id: draft.vetHospitalId, deletedAt: null },
-				select: { id: true }
+				select: { id: true, name: true }
 			});
 			if (!hospital) throw new CampaignNotFoundError(`Hospital ${draft.vetHospitalId} not found`);
 			vetHospitalId = hospital.id;
+			resolvedHospitalName = hospital.name;
 		}
+
+		const { ttlCoversText, ownerObligationText } = buildPromiseToPayTexts({
+			billAmountCents: draft.billAmountCents,
+			ttlCoversCents: draft.ttlCoversCents,
+			ownerMaxObligationCents: draft.ownerMaxObligationCents,
+			hospitalName: resolvedHospitalName
+		});
 
 		return tx.campaign.create({
 			data: {
@@ -243,7 +264,7 @@ export async function createPublishedCampaign(ownerId: string, draft: PublishedC
 				summary: draft.summary,
 				body: draft.story,
 				coverImageUrl: draft.coverImageUrl ?? null,
-				goalAmountCents: draft.billAmountCents,
+				goalAmountCents: draft.ttlCoversCents,
 				billAmountCents: draft.billAmountCents,
 				ownerId,
 				vetHospitalId,
@@ -251,6 +272,22 @@ export async function createPublishedCampaign(ownerId: string, draft: PublishedC
 				visibility: 'PUBLIC',
 				publishedAt: now,
 				deadline: new Date(now.getTime() + CAMPAIGN_DURATION_MS),
+				members: {
+					create: { userId: ownerId, role: 'OWNER', status: 'ACCEPTED' }
+				},
+				promiseToPay: {
+					create: {
+						billAmountCents: draft.billAmountCents,
+						ttlCoversCents: draft.ttlCoversCents,
+						ownerMaxObligationCents: draft.ownerMaxObligationCents,
+						ttlCoversText,
+						ownerObligationText,
+						accepted: true,
+						acceptedAt: now,
+						acceptedBy: ownerId,
+						termsVersion: '2026-10'
+					}
+				},
 				pets: {
 					create: {
 						role: 'PRIMARY',
@@ -349,6 +386,19 @@ export async function findActiveCampaignForOwner(ownerId: string) {
 		orderBy: { createdAt: 'desc' },
 		include: {
 			vetHospital: { select: { id: true, name: true, city: true } },
+			promiseToPay: {
+				select: {
+					id: true,
+					billAmountCents: true,
+					ttlCoversCents: true,
+					ownerMaxObligationCents: true,
+					ttlCoversText: true,
+					ownerObligationText: true,
+					accepted: true,
+					acceptedAt: true,
+					termsVersion: true
+				}
+			},
 			pets: {
 				where: { role: 'PRIMARY' },
 				include: { pet: { select: { id: true, name: true, species: true, breed: true } } }
