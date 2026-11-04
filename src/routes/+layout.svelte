@@ -2,6 +2,7 @@
 	import './layout.css';
 	import { Footer } from '$lib/components/ui/footer';
 	import { Header } from '$lib/components/ui/header';
+	import { ChatButton } from '$lib/components/ui/chat';
 
 	let { children, data } = $props();
 </script>
@@ -14,3 +15,4 @@
 	</div>
 	<Footer />
 </div>
+<ChatButton />
