@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { normalizeSearchQuery } from '$lib/server/db/campaign-search';
-import { db } from '$lib/server/db';
+import { listPendingCampaignsForOwner } from '$lib/server/db/browse';
 import {
 	ActiveCampaignLimitError,
 	closeExpiredCampaigns,
@@ -20,13 +20,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		listPublicCampaigns(now, 50, query),
 		getPlatformTotals(now),
 		listRecentPublicDonors(10),
-		locals.user
-			? db.campaign.findMany({
-					where: { ownerId: locals.user.id, status: 'PENDING_REVIEW', deletedAt: null },
-					orderBy: { createdAt: 'desc' },
-					select: { slug: true, title: true, publishedAt: true, deadline: true }
-				})
-			: Promise.resolve([])
+		locals.user ? listPendingCampaignsForOwner(locals.user.id) : Promise.resolve([])
 	]);
 
 	return {
@@ -47,7 +41,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		if (!locals.user) redirect(303, '/demo/better-auth/login');
+		if (!locals.user) redirect(303, '/login');
 
 		const form = await request.formData();
 		const draft = parseCampaignDraft(form);

@@ -26,7 +26,7 @@
 		"db:export-sql": "node prisma/export-seed-sql.mjs",
 		"db:clean": "node prisma/export-seed-sql.mjs --clean",
 		"db:check-links": "node scripts/check-funding-links.mjs",
-		"test": "vitest run"
+		"test": "vitest run src && node --import tsx --test tests/*.test.ts"
 	},
 	"prisma": {
 		"seed": "tsx prisma/seed.ts"

@@ -46,11 +46,22 @@ export async function setOwnerCampaignState(
 	const now = new Date();
 	const campaign = await db.campaign.findFirst({
 		where: { id: campaignId, ownerId, deletedAt: null },
-		select: { status: true, createdAt: true, publishedAt: true, deadline: true }
+		select: {
+			status: true,
+			createdAt: true,
+			publishedAt: true,
+			deadline: true,
+			promiseToPay: { select: { accepted: true } }
+		}
 	});
 	if (!campaign) throw new ValidationError('Campaign not found.');
 
 	if (action === 'RESUME') {
+		if (!campaign.promiseToPay?.accepted) {
+			throw new ValidationError(
+				'Cannot resume: the owner has not accepted the promise-to-pay terms.'
+			);
+		}
 		const deadline = campaignEndDate(campaign);
 		if (deadline <= now) {
 			await db.campaign.updateMany({
@@ -312,6 +323,30 @@ export async function setCampaignOwner(campaignId: string, newOwnerId: string) {
 }
 
 // ---------- Promise to pay (TTL-211) ----------
+
+const usdFormatter = new Intl.NumberFormat('en-US', {
+	style: 'currency',
+	currency: 'USD'
+});
+
+export function formatUsdCents(cents: number): string {
+	return usdFormatter.format(cents / 100);
+}
+
+export function buildPromiseToPayTexts(input: {
+	billAmountCents: number;
+	ttlCoversCents: number;
+	ownerMaxObligationCents: number;
+	hospitalName?: string | null;
+}): { ttlCoversText: string; ownerObligationText: string } {
+	const clinic = input.hospitalName?.trim() || 'your veterinary hospital';
+	const ttlCoversText = `TakeTheLead pays ${clinic} directly as donations come in, up to ${formatUsdCents(input.ttlCoversCents)} of the ${formatUsdCents(input.billAmountCents)} bill.`;
+	const ownerObligationText =
+		input.ownerMaxObligationCents === 0
+			? `You owe nothing (${formatUsdCents(0)}) for this bill; TakeTheLead covers the full ${formatUsdCents(input.billAmountCents)} bill.`
+			: `You owe at most ${formatUsdCents(input.ownerMaxObligationCents)} — the portion of the ${formatUsdCents(input.billAmountCents)} bill not covered by TakeTheLead.`;
+	return { ttlCoversText, ownerObligationText };
+}
 
 export interface AcceptPromiseToPayInput {
 	campaignId: string;
