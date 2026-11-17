@@ -71,7 +71,7 @@ Everything works the same on Linux: `db:seed` runs `tsx prisma/seed.ts`, and the
 
 ### Demo accounts
 
-The seed creates these loginable accounts (password for all: `password123!`). Sign in at [/demo/better-auth/login](http://localhost:5173/demo/better-auth/login).
+The seed creates these loginable accounts (password for all: `password123!`). Sign in at [/login](http://localhost:5173/login).
 
 | Email                        | Name           | Role                                     |
 | ---------------------------- | -------------- | ---------------------------------------- |
