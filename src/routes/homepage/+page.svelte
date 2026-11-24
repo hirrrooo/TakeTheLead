@@ -39,7 +39,7 @@
 
 	// Placeholder links until the real resource pages exist.
 	const resources: { label: string; href: Pathname }[] = [
-		{ label: 'Veterinary Costs and Why', href: '/contact-us' },
+		{ label: 'Veterinary Costs and Why', href: '/vetcosts' },
 		{ label: 'Pet Insurance', href: '/petinsurance' },
 		{ label: 'Pet Credit Cards', href: '/contact-us' },
 		{ label: 'Additional Information', href: '/contact-us' }
