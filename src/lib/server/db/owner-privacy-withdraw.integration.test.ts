@@ -233,6 +233,73 @@ describe('owner privacy on public queries', () => {
 		const byHospitalCityOnly = await listPublicCampaigns(new Date(), 50, `Virginia Beach`);
 		expect(byHospitalCityOnly.some((c) => c.slug === slugHospitalFallback)).toBe(false);
 	});
+
+	it('does not match suppressed raw owner names, aliases, or rejected city/address strings in search', async () => {
+		const emailOwnerId = `it_priv_email_${run}`;
+		const suppressedSlug = `it-priv-suppressed-${run}`;
+		const rejectedAliasSlug = `it-priv-rejalias-${run}`;
+		await db.user.create({
+			data: {
+				id: emailOwnerId,
+				email: `${emailOwnerId}@test.dev`,
+				name: `suppressed_${run}@example.com`
+			}
+		});
+		const cEmail = await db.campaign.create({
+			data: {
+				slug: suppressedSlug,
+				title: `Clean Title ${run}`,
+				summary: 'Clean summary without secrets.',
+				body: 'Clean story without secrets.',
+				status: 'APPROVED',
+				visibility: 'PUBLIC',
+				ownerId: emailOwnerId,
+				ownerCity: `HiddenCity_${run}, VA 23510`,
+				publishedAt: start,
+				deadline
+			}
+		});
+		const cAlias = await db.campaign.create({
+			data: {
+				slug: rejectedAliasSlug,
+				title: `Anon Clean Title ${run}`,
+				summary: 'Clean anonymous summary.',
+				body: 'Clean anonymous story.',
+				status: 'APPROVED',
+				visibility: 'PUBLIC',
+				isOwnerAnonymous: true,
+				ownerDisplayName: `secretalias_${run}@example.com`,
+				ownerCity: `789 Hidden Rd ${run}`,
+				ownerId: emailOwnerId,
+				publishedAt: start,
+				deadline
+			}
+		});
+
+		try {
+			const bySuppressedEmailName = await listPublicCampaigns(new Date(), 50, `suppressed_${run}`);
+			expect(bySuppressedEmailName.some((c) => c.slug === suppressedSlug)).toBe(false);
+
+			const bySuppressedCityZip = await listPublicCampaigns(new Date(), 50, `HiddenCity_${run}`);
+			expect(bySuppressedCityZip.some((c) => c.slug === suppressedSlug)).toBe(false);
+
+			const bySuppressedAlias = await listPublicCampaigns(new Date(), 50, `secretalias_${run}`);
+			expect(bySuppressedAlias.some((c) => c.slug === rejectedAliasSlug)).toBe(false);
+
+			const bySuppressedStreetCity = await listPublicCampaigns(
+				new Date(),
+				50,
+				'123 Secret Address'
+			);
+			expect(bySuppressedStreetCity.some((c) => c.slug === slugAnonymous)).toBe(false);
+
+			const bySuppressedRoad = await listPublicCampaigns(new Date(), 50, `789 Hidden Rd`);
+			expect(bySuppressedRoad.some((c) => c.slug === rejectedAliasSlug)).toBe(false);
+		} finally {
+			await db.campaign.deleteMany({ where: { id: { in: [cEmail.id, cAlias.id] } } });
+			await db.user.deleteMany({ where: { id: emailOwnerId } });
+		}
+	});
 });
 
 describe('owner pause, resume, and withdraw lifecycle', () => {

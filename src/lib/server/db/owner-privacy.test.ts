@@ -4,6 +4,7 @@ import {
 	formatPublicOwnerLabel,
 	looksLikeStreetAddress,
 	projectPublicOwner,
+	projectSearchableOwner,
 	sanitizePublicCity
 } from './owner-privacy';
 
@@ -159,5 +160,30 @@ describe('projectPublicOwner', () => {
 			'Maria · Virginia Beach'
 		);
 		expect(formatPublicOwnerLabel({ ownerName: 'Maria', ownerCity: null })).toBe('Maria');
+	});
+
+	it('returns null searchable owner name/city when raw fields are suppressed', () => {
+		expect(
+			projectSearchableOwner({
+				ownerName: 'maria@example.com',
+				isOwnerAnonymous: false,
+				ownerCity: '123 Main St'
+			})
+		).toEqual({
+			ownerName: null,
+			ownerCity: null
+		});
+
+		expect(
+			projectSearchableOwner({
+				ownerName: 'Maria Alvarez',
+				isOwnerAnonymous: true,
+				ownerDisplayName: 'secret@example.com',
+				ownerCity: 'Norfolk, VA 23510'
+			})
+		).toEqual({
+			ownerName: null,
+			ownerCity: null
+		});
 	});
 });

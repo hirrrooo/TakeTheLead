@@ -7,7 +7,7 @@ import {
 	campaignStartDate,
 	getCampaignState
 } from './campaign-state';
-import { projectPublicOwner, stripOwnerRelations } from './owner-privacy';
+import { projectPublicOwner, projectSearchableOwner, stripOwnerRelations } from './owner-privacy';
 import { searchTerms } from './campaign-search';
 import { buildPromiseToPayTexts, ValidationError } from './queries';
 
@@ -562,9 +562,21 @@ export function campaignSearchWhere(query: string): Prisma.CampaignWhereInput[] 
 			{ title: { contains: term } },
 			{ summary: { contains: term } },
 			{ body: { contains: term } },
-			{ AND: [{ isOwnerAnonymous: false }, { owner: { name: { startsWith: term } } }] },
-			{ AND: [{ isOwnerAnonymous: true }, { ownerDisplayName: { contains: term } }] },
-			{ ownerCity: { contains: term } },
+			{
+				AND: [
+					{ isOwnerAnonymous: false },
+					{ owner: { name: { startsWith: term } } },
+					{ NOT: { owner: { name: { contains: '@' } } } }
+				]
+			},
+			{
+				AND: [
+					{ isOwnerAnonymous: true },
+					{ ownerDisplayName: { contains: term } },
+					{ NOT: { ownerDisplayName: { contains: '@' } } }
+				]
+			},
+			{ AND: [{ ownerCity: { contains: term } }, { NOT: { ownerCity: { contains: '@' } } }] },
 			{ pets: { some: { pet: { name: { contains: term } } } } },
 			{ vetHospital: { name: { contains: term } } }
 		]
@@ -578,6 +590,8 @@ export function campaignSearchWhere(query: string): Prisma.CampaignWhereInput[] 
 export async function listPublicCampaigns(now = new Date(), take = 50, query = '') {
 	await closeExpiredCampaigns(now);
 
+	const terms = searchTerms(query).map((term) => term.toLowerCase());
+
 	const campaigns = await db.campaign.findMany({
 		where: {
 			visibility: 'PUBLIC',
@@ -586,14 +600,39 @@ export async function listPublicCampaigns(now = new Date(), take = 50, query = '
 			AND: campaignSearchWhere(query)
 		},
 		orderBy: { createdAt: 'desc' },
-		take,
+		...(terms.length === 0 ? { take } : {}),
 		include: {
 			owner: { select: { name: true } },
+			vetHospital: { select: { name: true } },
+			pets: { select: { pet: { select: { name: true } } } },
 			_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
 		}
 	});
 
-	return campaigns.map((campaign) => {
+	const filtered =
+		terms.length === 0
+			? campaigns
+			: campaigns.filter((campaign) => {
+					const searchableOwner = projectSearchableOwner({
+						ownerName: campaign.owner.name,
+						isOwnerAnonymous: campaign.isOwnerAnonymous,
+						ownerDisplayName: campaign.ownerDisplayName,
+						ownerCity: campaign.ownerCity
+					});
+					const haystack = [
+						campaign.title,
+						campaign.summary ?? '',
+						campaign.body,
+						searchableOwner.ownerName ?? '',
+						searchableOwner.ownerCity ?? '',
+						campaign.vetHospital?.name ?? '',
+						...campaign.pets.map((p) => p.pet.name)
+					].map((value) => value.toLowerCase());
+
+					return terms.every((term) => haystack.some((value) => value.includes(term)));
+				});
+
+	return filtered.slice(0, take).map((campaign) => {
 		const publicOwner = projectPublicOwner({
 			ownerName: campaign.owner.name,
 			isOwnerAnonymous: campaign.isOwnerAnonymous,

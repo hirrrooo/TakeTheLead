@@ -60,7 +60,10 @@ export function sanitizePublicCity(rawCity: string | null | undefined): string |
 	return cityOnly;
 }
 
-export function projectPublicOwner(input: PublicOwnerInput): PublicOwnerProjection {
+export function projectSearchableOwner(input: PublicOwnerInput): {
+	ownerName: string | null;
+	ownerCity: string | null;
+} {
 	const ownerCity = sanitizePublicCity(input.ownerCity) ?? null;
 
 	if (input.isOwnerAnonymous) {
@@ -68,18 +71,25 @@ export function projectPublicOwner(input: PublicOwnerInput): PublicOwnerProjecti
 			.trim()
 			.replace(/\s+/g, ' ');
 		return {
-			ownerName:
-				alias && !alias.includes('@') && !looksLikeStreetAddress(alias) ? alias : 'Anonymous',
+			ownerName: alias && !alias.includes('@') && !looksLikeStreetAddress(alias) ? alias : null,
 			ownerCity
 		};
 	}
 
 	return {
-		ownerName: extractFirstName(input.ownerName) ?? DEFAULT_PUBLIC_OWNER_NAME,
+		ownerName: extractFirstName(input.ownerName),
 		ownerCity
 	};
 }
 
+export function projectPublicOwner(input: PublicOwnerInput): PublicOwnerProjection {
+	const searchable = projectSearchableOwner(input);
+	return {
+		ownerName:
+			searchable.ownerName ?? (input.isOwnerAnonymous ? 'Anonymous' : DEFAULT_PUBLIC_OWNER_NAME),
+		ownerCity: searchable.ownerCity
+	};
+}
 export function formatPublicOwnerLabel(owner: PublicOwnerProjection): string {
 	return owner.ownerCity ? `${owner.ownerName} · ${owner.ownerCity}` : owner.ownerName;
 }
