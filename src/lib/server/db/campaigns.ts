@@ -7,6 +7,7 @@ import {
 	campaignStartDate,
 	getCampaignState
 } from './campaign-state';
+import { projectPublicOwner, stripOwnerRelations } from './owner-privacy';
 import { searchTerms } from './campaign-search';
 import { buildPromiseToPayTexts, ValidationError } from './queries';
 
@@ -197,6 +198,7 @@ export interface PublishedCampaignDraft {
 	vetHospitalId: string;
 	hospitalName?: string;
 	hospitalCity?: string;
+	ownerCity?: string | null;
 	coverImageUrl?: string | null;
 }
 
@@ -275,6 +277,7 @@ export async function createPublishedCampaign(ownerId: string, draft: PublishedC
 				goalAmountCents: draft.ttlCoversCents,
 				billAmountCents: draft.billAmountCents,
 				ownerId,
+				ownerCity: draft.ownerCity || null,
 				vetHospitalId,
 				status: 'APPROVED',
 				visibility: 'PUBLIC',
@@ -318,6 +321,7 @@ export interface CampaignContentEdit {
 	title: string;
 	summary: string;
 	body: string;
+	ownerCity?: string | null;
 	coverImageUrl?: string | null;
 }
 
@@ -344,6 +348,7 @@ export async function updateCampaignContent(
 			title: edit.title,
 			summary: edit.summary,
 			body: edit.body,
+			...(edit.ownerCity !== undefined ? { ownerCity: edit.ownerCity || null } : {}),
 			coverImageUrl: edit.coverImageUrl || null
 		}
 	});
@@ -446,13 +451,32 @@ export async function findCampaign(slug: string, now = new Date()) {
 		where: { slug, deletedAt: null },
 		include: {
 			owner: { select: { id: true, name: true } },
+			vetHospital: { select: { city: true } },
 			_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
 		}
 	});
 	if (!campaign) return null;
 
 	const state = getCampaignState(campaign, now);
-	return { ...campaign, state, live: state === 'live', ended: state === 'ended' };
+	const publicOwner = projectPublicOwner({
+		ownerName: campaign.owner.name,
+		isOwnerAnonymous: campaign.isOwnerAnonymous,
+		ownerDisplayName: campaign.ownerDisplayName,
+		ownerCity: campaign.ownerCity,
+		hospitalCity: campaign.vetHospital?.city ?? null
+	});
+	const safeCampaign = stripOwnerRelations(campaign);
+
+	return {
+		...safeCampaign,
+		ownerName: publicOwner.ownerName,
+		ownerCity: publicOwner.ownerCity,
+		state,
+		live: state === 'live',
+		ended: state === 'ended',
+		paused: state === 'paused',
+		withdrawn: campaign.status === 'WITHDRAWN'
+	};
 }
 
 export interface RecentDonorOptions {
@@ -531,7 +555,8 @@ export function liveCampaignWhere(now: Date): Prisma.CampaignWhereInput {
 
 /**
  * Every search word must match somewhere in the campaign: title, short
- * description, story, owner name, pet name or veterinary hospital name.
+ * description, story, owner first name (or anonymous display name), city,
+ * pet name, or veterinary hospital name. Never matches last names or addresses.
  */
 export function campaignSearchWhere(query: string): Prisma.CampaignWhereInput[] {
 	return searchTerms(query).map((term) => ({
@@ -539,7 +564,10 @@ export function campaignSearchWhere(query: string): Prisma.CampaignWhereInput[] 
 			{ title: { contains: term } },
 			{ summary: { contains: term } },
 			{ body: { contains: term } },
-			{ owner: { name: { contains: term } } },
+			{ AND: [{ isOwnerAnonymous: false }, { owner: { name: { startsWith: term } } }] },
+			{ AND: [{ isOwnerAnonymous: true }, { ownerDisplayName: { contains: term } }] },
+			{ ownerCity: { contains: term } },
+			{ vetHospital: { city: { contains: term } } },
 			{ pets: { some: { pet: { name: { contains: term } } } } },
 			{ vetHospital: { name: { contains: term } } }
 		]
@@ -564,23 +592,35 @@ export async function listPublicCampaigns(now = new Date(), take = 50, query = '
 		take,
 		include: {
 			owner: { select: { name: true } },
+			vetHospital: { select: { city: true } },
 			_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
 		}
 	});
 
-	return campaigns.map((campaign) => ({
-		id: campaign.id,
-		slug: campaign.slug,
-		title: campaign.title,
-		summary: campaign.summary ?? campaign.body,
-		status: getCampaignState(campaign, now) === 'ended' ? ('ended' as const) : ('live' as const),
-		startDate: campaignStartDate(campaign).toISOString(),
-		endDate: campaignEndDate(campaign).toISOString(),
-		goalCents: campaign.goalAmountCents ?? 0,
-		raisedCents: campaign.raisedCents,
-		donorCount: campaign._count.donations,
-		ownerName: campaign.owner.name ?? 'A Take the Lead member'
-	}));
+	return campaigns.map((campaign) => {
+		const publicOwner = projectPublicOwner({
+			ownerName: campaign.owner.name,
+			isOwnerAnonymous: campaign.isOwnerAnonymous,
+			ownerDisplayName: campaign.ownerDisplayName,
+			ownerCity: campaign.ownerCity,
+			hospitalCity: campaign.vetHospital?.city ?? null
+		});
+
+		return {
+			id: campaign.id,
+			slug: campaign.slug,
+			title: campaign.title,
+			summary: campaign.summary ?? campaign.body,
+			status: getCampaignState(campaign, now) === 'ended' ? ('ended' as const) : ('live' as const),
+			startDate: campaignStartDate(campaign).toISOString(),
+			endDate: campaignEndDate(campaign).toISOString(),
+			goalCents: campaign.goalAmountCents ?? 0,
+			raisedCents: campaign.raisedCents,
+			donorCount: campaign._count.donations,
+			ownerName: publicOwner.ownerName,
+			ownerCity: publicOwner.ownerCity
+		};
+	});
 }
 
 /** Totals across live campaigns, from COMPLETED donations only. */

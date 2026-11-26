@@ -85,3 +85,12 @@ export function projectPublicOwner(input: PublicOwnerInput): PublicOwnerProjecti
 export function formatPublicOwnerLabel(owner: PublicOwnerProjection): string {
 	return owner.ownerCity ? `${owner.ownerName} · ${owner.ownerCity}` : owner.ownerName;
 }
+
+export function stripOwnerRelations<T extends { owner?: unknown; vetHospital?: unknown }>(
+	row: T
+): Omit<T, 'owner' | 'vetHospital'> {
+	const copy = { ...row };
+	delete copy.owner;
+	delete copy.vetHospital;
+	return copy;
+}

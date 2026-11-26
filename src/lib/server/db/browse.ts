@@ -9,6 +9,7 @@
  */
 import { db } from '$lib/server/db';
 import { CAMPAIGN_DURATION_MS } from '$lib/server/db/campaigns';
+import { projectPublicOwner, stripOwnerRelations } from '$lib/server/db/owner-privacy';
 import type { Prisma } from '../../../generated/prisma/client';
 
 /** Approved, public, already started and not yet past its deadline. */
@@ -43,7 +44,7 @@ export function activeCampaignFilter(now: Date): Prisma.CampaignWhereInput {
 /** Public campaigns for the browse page: currently live plus closed ones. */
 export async function listBrowseCampaigns(now: Date, take = 50) {
 	const liveFilter = activeCampaignFilter(now);
-	return db.campaign.findMany({
+	const rows = await db.campaign.findMany({
 		where: {
 			visibility: 'PUBLIC',
 			deletedAt: null,
@@ -53,8 +54,26 @@ export async function listBrowseCampaigns(now: Date, take = 50) {
 		take,
 		include: {
 			owner: { select: { name: true } },
+			vetHospital: { select: { city: true } },
 			_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
 		}
+	});
+
+	return rows.map((campaign) => {
+		const publicOwner = projectPublicOwner({
+			ownerName: campaign.owner.name,
+			isOwnerAnonymous: campaign.isOwnerAnonymous,
+			ownerDisplayName: campaign.ownerDisplayName,
+			ownerCity: campaign.ownerCity,
+			hospitalCity: campaign.vetHospital?.city ?? null
+		});
+		const safeCampaign = stripOwnerRelations(campaign);
+
+		return {
+			...safeCampaign,
+			ownerName: publicOwner.ownerName,
+			ownerCity: publicOwner.ownerCity
+		};
 	});
 }
 

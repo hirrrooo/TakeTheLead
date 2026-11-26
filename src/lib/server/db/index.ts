@@ -7,9 +7,11 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefi
 export const db =
 	globalForPrisma.prisma ??
 	new PrismaClient({
-		adapter: new PrismaBetterSqlite3({ url: env.DATABASE_URL ?? 'file:./prisma/dev.db' })
+		adapter: new PrismaBetterSqlite3({
+			url: env.DATABASE_URL ?? 'file:./prisma/dev.db',
+			timeout: 10_000
+		})
 	});
-
 if (process.env.NODE_ENV !== 'production') {
 	globalForPrisma.prisma = db;
 }
