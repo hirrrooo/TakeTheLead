@@ -32,7 +32,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 			ownerDisplayName: true,
 			ownerCity: true,
 			owner: { select: { name: true } },
-			vetHospital: { select: { city: true } },
 			pets: {
 				where: { role: 'PRIMARY' },
 				select: { pet: { select: { name: true } } }
@@ -85,7 +84,6 @@ function mapCampaigns(
 		ownerDisplayName: string | null;
 		ownerCity: string | null;
 		owner: { name: string | null };
-		vetHospital: { city: string | null } | null;
 		pets: { pet: { name: string } }[];
 	}[],
 	now: Date
@@ -97,8 +95,7 @@ function mapCampaigns(
 			ownerName: c.owner.name,
 			isOwnerAnonymous: c.isOwnerAnonymous,
 			ownerDisplayName: c.ownerDisplayName,
-			ownerCity: c.ownerCity,
-			hospitalCity: c.vetHospital?.city ?? null
+			ownerCity: c.ownerCity
 		});
 		return {
 			id: c.id,

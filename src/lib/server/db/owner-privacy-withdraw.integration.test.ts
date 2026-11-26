@@ -187,7 +187,7 @@ describe('owner privacy on public queries', () => {
 		const hospFallback = list.find((c) => c.slug === slugHospitalFallback);
 		expect(hospFallback).toMatchObject({
 			ownerName: 'Elena',
-			ownerCity: 'Virginia Beach'
+			ownerCity: null
 		});
 
 		const explicitCity = list.find((c) => c.slug === slugExplicitCity);
@@ -199,7 +199,7 @@ describe('owner privacy on public queries', () => {
 		const anon = list.find((c) => c.slug === slugAnonymous);
 		expect(anon).toMatchObject({
 			ownerName: `Shadow's Family ${run}`,
-			ownerCity: 'Virginia Beach'
+			ownerCity: null
 		});
 	});
 
@@ -207,15 +207,15 @@ describe('owner privacy on public queries', () => {
 		const single = await findCampaign(slugHospitalFallback);
 		expect(single).toBeTruthy();
 		expect(single?.ownerName).toBe('Elena');
-		expect(single?.ownerCity).toBe('Virginia Beach');
+		expect(single?.ownerCity).toBeNull();
 		expect(JSON.stringify(single)).not.toContain('Vance-Test');
 		expect(JSON.stringify(single)).not.toContain('Secret Street');
+		expect(JSON.stringify(single)).not.toContain('Virginia Beach');
 
 		const anonSingle = await findCampaign(slugAnonymous);
 		expect(anonSingle?.ownerName).toBe(`Shadow's Family ${run}`);
-		expect(anonSingle?.ownerCity).toBe('Virginia Beach');
+		expect(anonSingle?.ownerCity).toBeNull();
 		expect(JSON.stringify(anonSingle)).not.toContain('Elena');
-
 		const browse = await listBrowseCampaigns(new Date(), 50);
 		expect(JSON.stringify(browse)).not.toContain('Vance-Test');
 	});
@@ -229,6 +229,9 @@ describe('owner privacy on public queries', () => {
 
 		const byCity = await listPublicCampaigns(new Date(), 50, `Norfolk-${run}`);
 		expect(byCity.some((c) => c.slug === slugExplicitCity)).toBe(true);
+
+		const byHospitalCityOnly = await listPublicCampaigns(new Date(), 50, `Virginia Beach`);
+		expect(byHospitalCityOnly.some((c) => c.slug === slugHospitalFallback)).toBe(false);
 	});
 });
 

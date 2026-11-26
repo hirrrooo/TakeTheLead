@@ -65,28 +65,26 @@ describe('sanitizePublicCity', () => {
 });
 
 describe('projectPublicOwner', () => {
-	it('projects first name and hospital city fallback when ownerCity is absent', () => {
+	it('omits city when ownerCity is absent rather than inferring from hospital location', () => {
 		expect(
 			projectPublicOwner({
 				ownerName: 'Maria Alvarez',
 				isOwnerAnonymous: false,
 				ownerDisplayName: null,
-				ownerCity: null,
-				hospitalCity: 'Virginia Beach'
+				ownerCity: null
 			})
 		).toEqual({
 			ownerName: 'Maria',
-			ownerCity: 'Virginia Beach'
+			ownerCity: null
 		});
 	});
 
-	it('prefers sanitized ownerCity over hospitalCity and ignores street-address inputs', () => {
+	it('keeps sanitized ownerCity and drops street-address inputs', () => {
 		expect(
 			projectPublicOwner({
 				ownerName: 'Pat Nguyen',
 				isOwnerAnonymous: false,
-				ownerCity: 'Norfolk',
-				hospitalCity: 'Chesapeake'
+				ownerCity: 'Norfolk'
 			})
 		).toEqual({
 			ownerName: 'Pat',
@@ -97,12 +95,11 @@ describe('projectPublicOwner', () => {
 			projectPublicOwner({
 				ownerName: 'Pat Nguyen',
 				isOwnerAnonymous: false,
-				ownerCity: '123 Oak St',
-				hospitalCity: 'Chesapeake'
+				ownerCity: '123 Oak St'
 			})
 		).toEqual({
 			ownerName: 'Pat',
-			ownerCity: 'Chesapeake'
+			ownerCity: null
 		});
 	});
 
@@ -112,7 +109,7 @@ describe('projectPublicOwner', () => {
 				ownerName: 'Maria Alvarez',
 				isOwnerAnonymous: true,
 				ownerDisplayName: 'Whiskers’ Family',
-				hospitalCity: 'Virginia Beach'
+				ownerCity: 'Virginia Beach'
 			})
 		).toEqual({
 			ownerName: 'Whiskers’ Family',
@@ -124,7 +121,7 @@ describe('projectPublicOwner', () => {
 				ownerName: 'Maria Alvarez',
 				isOwnerAnonymous: true,
 				ownerDisplayName: null,
-				hospitalCity: null
+				ownerCity: null
 			})
 		).toEqual({
 			ownerName: 'Anonymous',
@@ -136,7 +133,7 @@ describe('projectPublicOwner', () => {
 				ownerName: 'Maria Alvarez',
 				isOwnerAnonymous: true,
 				ownerDisplayName: 'secret@example.com',
-				hospitalCity: '123 Main St'
+				ownerCity: '123 Main St'
 			})
 		).toEqual({
 			ownerName: 'Anonymous',

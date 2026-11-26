@@ -907,6 +907,7 @@ export interface SeedCampaign {
 	allowGuestDonations: boolean;
 	isOwnerAnonymous: boolean;
 	ownerDisplayName: string | null;
+	ownerCity: string | null;
 	vetHospitalId: string | null;
 	ownerId: string;
 	publishedAt: Date | null;
@@ -935,6 +936,7 @@ export const seedCampaigns: SeedCampaign[] = [
 		allowGuestDonations: true,
 		isOwnerAnonymous: false,
 		ownerDisplayName: null,
+		ownerCity: 'Virginia Beach',
 		vetHospitalId: 'seed_hosp_vest',
 		ownerId: 'seed_maria',
 		publishedAt: daysAgo(20),
@@ -956,6 +958,7 @@ export const seedCampaigns: SeedCampaign[] = [
 		allowGuestDonations: true,
 		isOwnerAnonymous: false,
 		ownerDisplayName: null,
+		ownerCity: 'Norfolk',
 		vetHospitalId: 'seed_hosp_ghent',
 		ownerId: 'seed_maria',
 		publishedAt: daysAgo(15),
@@ -977,6 +980,7 @@ export const seedCampaigns: SeedCampaign[] = [
 		allowGuestDonations: true,
 		isOwnerAnonymous: true,
 		ownerDisplayName: 'Whiskers\u2019 Family',
+		ownerCity: null,
 		vetHospitalId: 'seed_hosp_baybeach',
 		ownerId: 'seed_maria',
 		publishedAt: daysAgo(10),
@@ -998,6 +1002,7 @@ export const seedCampaigns: SeedCampaign[] = [
 		allowGuestDonations: true,
 		isOwnerAnonymous: false,
 		ownerDisplayName: null,
+		ownerCity: 'Chesapeake',
 		vetHospitalId: 'seed_hosp_chesapeake',
 		ownerId: 'seed_pat',
 		publishedAt: daysAgo(12),
@@ -1019,6 +1024,7 @@ export const seedCampaigns: SeedCampaign[] = [
 		allowGuestDonations: true,
 		isOwnerAnonymous: false,
 		ownerDisplayName: null,
+		ownerCity: 'Chesapeake',
 		vetHospitalId: 'seed_hosp_midway',
 		ownerId: 'seed_pat',
 		publishedAt: null,
@@ -1040,6 +1046,7 @@ export const seedCampaigns: SeedCampaign[] = [
 		allowGuestDonations: false,
 		isOwnerAnonymous: false,
 		ownerDisplayName: null,
+		ownerCity: 'Chesapeake',
 		vetHospitalId: 'seed_hosp_edinburgh',
 		ownerId: 'seed_pat',
 		publishedAt: daysAgo(120),

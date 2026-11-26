@@ -451,7 +451,6 @@ export async function findCampaign(slug: string, now = new Date()) {
 		where: { slug, deletedAt: null },
 		include: {
 			owner: { select: { id: true, name: true } },
-			vetHospital: { select: { city: true } },
 			_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
 		}
 	});
@@ -462,8 +461,7 @@ export async function findCampaign(slug: string, now = new Date()) {
 		ownerName: campaign.owner.name,
 		isOwnerAnonymous: campaign.isOwnerAnonymous,
 		ownerDisplayName: campaign.ownerDisplayName,
-		ownerCity: campaign.ownerCity,
-		hospitalCity: campaign.vetHospital?.city ?? null
+		ownerCity: campaign.ownerCity
 	});
 	const safeCampaign = stripOwnerRelations(campaign);
 
@@ -567,7 +565,6 @@ export function campaignSearchWhere(query: string): Prisma.CampaignWhereInput[] 
 			{ AND: [{ isOwnerAnonymous: false }, { owner: { name: { startsWith: term } } }] },
 			{ AND: [{ isOwnerAnonymous: true }, { ownerDisplayName: { contains: term } }] },
 			{ ownerCity: { contains: term } },
-			{ vetHospital: { city: { contains: term } } },
 			{ pets: { some: { pet: { name: { contains: term } } } } },
 			{ vetHospital: { name: { contains: term } } }
 		]
@@ -592,7 +589,6 @@ export async function listPublicCampaigns(now = new Date(), take = 50, query = '
 		take,
 		include: {
 			owner: { select: { name: true } },
-			vetHospital: { select: { city: true } },
 			_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
 		}
 	});
@@ -602,10 +598,8 @@ export async function listPublicCampaigns(now = new Date(), take = 50, query = '
 			ownerName: campaign.owner.name,
 			isOwnerAnonymous: campaign.isOwnerAnonymous,
 			ownerDisplayName: campaign.ownerDisplayName,
-			ownerCity: campaign.ownerCity,
-			hospitalCity: campaign.vetHospital?.city ?? null
+			ownerCity: campaign.ownerCity
 		});
-
 		return {
 			id: campaign.id,
 			slug: campaign.slug,

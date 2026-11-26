@@ -54,7 +54,6 @@ export async function listBrowseCampaigns(now: Date, take = 50) {
 		take,
 		include: {
 			owner: { select: { name: true } },
-			vetHospital: { select: { city: true } },
 			_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
 		}
 	});
@@ -64,11 +63,9 @@ export async function listBrowseCampaigns(now: Date, take = 50) {
 			ownerName: campaign.owner.name,
 			isOwnerAnonymous: campaign.isOwnerAnonymous,
 			ownerDisplayName: campaign.ownerDisplayName,
-			ownerCity: campaign.ownerCity,
-			hospitalCity: campaign.vetHospital?.city ?? null
+			ownerCity: campaign.ownerCity
 		});
 		const safeCampaign = stripOwnerRelations(campaign);
-
 		return {
 			...safeCampaign,
 			ownerName: publicOwner.ownerName,

@@ -13,7 +13,6 @@ export interface PublicOwnerInput {
 	isOwnerAnonymous?: boolean;
 	ownerDisplayName?: string | null;
 	ownerCity?: string | null;
-	hospitalCity?: string | null;
 }
 
 export interface PublicOwnerProjection {
@@ -62,8 +61,7 @@ export function sanitizePublicCity(rawCity: string | null | undefined): string |
 }
 
 export function projectPublicOwner(input: PublicOwnerInput): PublicOwnerProjection {
-	const ownerCity =
-		sanitizePublicCity(input.ownerCity) ?? sanitizePublicCity(input.hospitalCity) ?? null;
+	const ownerCity = sanitizePublicCity(input.ownerCity) ?? null;
 
 	if (input.isOwnerAnonymous) {
 		const alias = String(input.ownerDisplayName ?? '')
@@ -86,11 +84,8 @@ export function formatPublicOwnerLabel(owner: PublicOwnerProjection): string {
 	return owner.ownerCity ? `${owner.ownerName} · ${owner.ownerCity}` : owner.ownerName;
 }
 
-export function stripOwnerRelations<T extends { owner?: unknown; vetHospital?: unknown }>(
-	row: T
-): Omit<T, 'owner' | 'vetHospital'> {
+export function stripOwnerRelations<T extends { owner?: unknown }>(row: T): Omit<T, 'owner'> {
 	const copy = { ...row };
 	delete copy.owner;
-	delete copy.vetHospital;
 	return copy;
 }

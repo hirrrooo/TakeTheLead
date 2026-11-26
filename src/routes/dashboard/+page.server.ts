@@ -239,8 +239,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 							ownerName: locals.user.name ?? locals.user.email.split('@')[0],
 							isOwnerAnonymous: campaign.isOwnerAnonymous,
 							ownerDisplayName: campaign.ownerDisplayName,
-							ownerCity: campaign.ownerCity,
-							hospitalCity: campaign.vetHospital?.city ?? null
+							ownerCity: campaign.ownerCity
 						})
 					),
 					coverImageUrl: campaign.coverImageUrl,
