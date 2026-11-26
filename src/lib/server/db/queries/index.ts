@@ -5,6 +5,8 @@
  * in one place.
  */
 import { db } from '$lib/server/db';
+import { campaignWindowsOverlap } from '$lib/server/db/campaigns';
+import { campaignEndDate, campaignStartDate } from '$lib/server/db/campaign-state';
 import type { Prisma } from '../../../../generated/prisma/client';
 import type {
 	CampaignStatus,
@@ -28,6 +30,73 @@ export class ValidationError extends Error {
 		super(message);
 		this.name = 'ValidationError';
 	}
+}
+
+// ---------- Owner-driven campaign lifecycle ----------
+
+/**
+ * Pause, resume, or withdraw an owned campaign. Transitions are guarded so an
+ * expired campaign cannot be resumed and only valid prior states are accepted.
+ */
+export async function setOwnerCampaignState(
+	campaignId: string,
+	ownerId: string,
+	action: 'PAUSE' | 'RESUME' | 'WITHDRAW'
+) {
+	const now = new Date();
+	const campaign = await db.campaign.findFirst({
+		where: { id: campaignId, ownerId, deletedAt: null },
+		select: {
+			status: true,
+			createdAt: true,
+			publishedAt: true,
+			deadline: true,
+			promiseToPay: { select: { accepted: true } }
+		}
+	});
+	if (!campaign) throw new ValidationError('Campaign not found.');
+
+	if (action === 'RESUME') {
+		if (!campaign.promiseToPay?.accepted) {
+			throw new ValidationError(
+				'Cannot resume: the owner has not accepted the promise-to-pay terms.'
+			);
+		}
+		const deadline = campaignEndDate(campaign);
+		if (deadline <= now) {
+			await db.campaign.updateMany({
+				where: { id: campaignId, ownerId, status: 'PAUSED' },
+				data: { status: 'CLOSED', closedAt: deadline }
+			});
+			throw new ValidationError('This campaign has ended and cannot be resumed.');
+		}
+	}
+
+	const transitions = {
+		PAUSE: { from: ['APPROVED'], to: 'PAUSED' },
+		RESUME: { from: ['PAUSED'], to: 'APPROVED' },
+		WITHDRAW: { from: ['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PAUSED'], to: 'WITHDRAWN' }
+	} as const;
+	const transition = transitions[action];
+
+	const result = await db.campaign.updateMany({
+		where: {
+			id: campaignId,
+			ownerId,
+			status: { in: [...transition.from] },
+			deletedAt: null
+		},
+		data: {
+			status: transition.to,
+			...(action === 'WITHDRAW' ? { closedAt: now } : {})
+		}
+	});
+
+	if (result.count !== 1) {
+		throw new ValidationError('This campaign can no longer be changed in that way.');
+	}
+
+	return db.campaign.findUniqueOrThrow({ where: { id: campaignId } });
 }
 
 // ---------- Invariant: raisedCents ----------
@@ -57,8 +126,12 @@ export interface RecordDonationInput {
 	donorName?: string | null;
 	isAnonymous?: boolean;
 	message?: string | null;
+	/** Only the campaign owner can read the message when true. Default: public. */
+	isMessagePrivate?: boolean;
 	currency?: string;
 	feeCents?: number;
+	/** Clock override for tests; defaults to the current time. */
+	now?: Date;
 }
 
 /**
@@ -71,18 +144,52 @@ export async function recordDonation(input: RecordDonationInput) {
 		throw new ValidationError('Donation amountCents must be a positive integer');
 	}
 
-	return db.$transaction(async (tx) => {
+	const result = await db.$transaction(async (tx) => {
 		const campaign = await tx.campaign.findUnique({
 			where: { id: input.campaignId },
-			select: { id: true, allowGuestDonations: true, deletedAt: true, status: true }
+			select: {
+				id: true,
+				allowGuestDonations: true,
+				deletedAt: true,
+				status: true,
+				createdAt: true,
+				publishedAt: true,
+				deadline: true
+			}
 		});
 		if (!campaign || campaign.deletedAt) throw new ValidationError('Campaign not found');
+
+		// Idempotency: a repeated providerRef (double-submitted form, retried webhook)
+		// returns the donation already recorded instead of creating a second one.
+		if (input.providerRef) {
+			const existing = await tx.donation.findUnique({ where: { providerRef: input.providerRef } });
+			if (existing) {
+				if (existing.campaignId !== input.campaignId) {
+					throw new ValidationError('This payment reference is already in use');
+				}
+				return { donation: existing };
+			}
+		}
+
+		const now = input.now ?? new Date();
+		const startsAt = campaignStartDate(campaign);
+		const endsAt = campaignEndDate(campaign);
+		if (endsAt <= now) {
+			await tx.campaign.updateMany({
+				where: {
+					id: campaign.id,
+					status: { in: ['PENDING_REVIEW', 'APPROVED'] }
+				},
+				data: { status: 'CLOSED', closedAt: endsAt }
+			});
+			return { expired: true as const };
+		}
+		if (startsAt > now) throw new ValidationError('This campaign has not started yet');
 		if (campaign.status !== 'APPROVED') throw new ValidationError('This campaign is not live');
 		if (!input.donorUserId && !campaign.allowGuestDonations) {
 			throw new AccessDeniedError('This campaign does not accept guest donations');
 		}
 
-		const now = new Date();
 		const initialStatus = input.status ?? 'PENDING';
 		const donation = await tx.donation.create({
 			data: {
@@ -95,6 +202,7 @@ export async function recordDonation(input: RecordDonationInput) {
 				donorName: input.donorName ?? null,
 				isAnonymous: input.isAnonymous ?? false,
 				message: input.message ?? null,
+				isMessagePrivate: input.message ? (input.isMessagePrivate ?? false) : false,
 				currency: input.currency ?? 'usd',
 				feeCents: input.feeCents ?? 0,
 				completedAt: initialStatus === 'COMPLETED' ? now : null
@@ -104,8 +212,11 @@ export async function recordDonation(input: RecordDonationInput) {
 		const raisedCents = await computeRaisedCents(tx, input.campaignId);
 		await tx.campaign.update({ where: { id: input.campaignId }, data: { raisedCents } });
 
-		return donation;
+		return { donation };
 	});
+
+	if ('expired' in result) throw new ValidationError('This campaign has ended');
+	return result.donation;
 }
 
 /**
@@ -212,6 +323,30 @@ export async function setCampaignOwner(campaignId: string, newOwnerId: string) {
 }
 
 // ---------- Promise to pay (TTL-211) ----------
+
+const usdFormatter = new Intl.NumberFormat('en-US', {
+	style: 'currency',
+	currency: 'USD'
+});
+
+export function formatUsdCents(cents: number): string {
+	return usdFormatter.format(cents / 100);
+}
+
+export function buildPromiseToPayTexts(input: {
+	billAmountCents: number;
+	ttlCoversCents: number;
+	ownerMaxObligationCents: number;
+	hospitalName?: string | null;
+}): { ttlCoversText: string; ownerObligationText: string } {
+	const clinic = input.hospitalName?.trim() || 'your veterinary hospital';
+	const ttlCoversText = `TakeTheLead pays ${clinic} directly as donations come in, up to ${formatUsdCents(input.ttlCoversCents)} of the ${formatUsdCents(input.billAmountCents)} bill.`;
+	const ownerObligationText =
+		input.ownerMaxObligationCents === 0
+			? `You owe nothing (${formatUsdCents(0)}) for this bill; TakeTheLead covers the full ${formatUsdCents(input.billAmountCents)} bill.`
+			: `You owe at most ${formatUsdCents(input.ownerMaxObligationCents)} — the portion of the ${formatUsdCents(input.billAmountCents)} bill not covered by TakeTheLead.`;
+	return { ttlCoversText, ownerObligationText };
+}
 
 export interface AcceptPromiseToPayInput {
 	campaignId: string;
@@ -320,14 +455,53 @@ export async function moderateCampaign(
 	decision: ReviewDecision,
 	reason?: string
 ) {
-	return db.$transaction(async (tx) => {
+	const result = await db.$transaction(async (tx) => {
 		const campaign = await tx.campaign.findUnique({
 			where: { id: campaignId },
-			select: { id: true }
+			select: {
+				id: true,
+				ownerId: true,
+				publishedAt: true,
+				createdAt: true,
+				deadline: true,
+				status: true
+			}
 		});
 		if (!campaign) throw new ValidationError('Campaign not found');
 
+		const startsAt = campaignStartDate(campaign);
+		const endsAt = campaignEndDate(campaign);
+		if (decision === 'APPROVED' && endsAt <= new Date()) {
+			await tx.campaign.updateMany({
+				where: {
+					id: campaign.id,
+					status: { in: ['PENDING_REVIEW', 'APPROVED'] }
+				},
+				data: { status: 'CLOSED', closedAt: endsAt }
+			});
+			return { expired: true as const };
+		}
+
 		if (decision === 'APPROVED') {
+			const approvedCampaigns = await tx.campaign.findMany({
+				where: {
+					ownerId: campaign.ownerId,
+					status: 'APPROVED',
+					deletedAt: null,
+					id: { not: campaignId }
+				},
+				select: { createdAt: true, publishedAt: true, deadline: true }
+			});
+			const conflictsWithActiveCampaign = approvedCampaigns.some((approved) => {
+				const approvedStart = approved.publishedAt ?? approved.createdAt;
+				return campaignWindowsOverlap(startsAt, endsAt, approvedStart, campaignEndDate(approved));
+			});
+			if (conflictsWithActiveCampaign) {
+				throw new ValidationError(
+					'Cannot approve: the owner already has an active campaign during these dates'
+				);
+			}
+
 			const promise = await tx.promiseToPay.findUnique({
 				where: { campaignId },
 				select: { accepted: true }
@@ -348,10 +522,13 @@ export async function moderateCampaign(
 			where: { id: campaignId },
 			data: {
 				status,
-				publishedAt: status === 'APPROVED' ? new Date() : undefined
+				publishedAt: status === 'APPROVED' ? (campaign.publishedAt ?? new Date()) : undefined
 			}
 		});
 
 		return { review, campaign: updated };
 	});
+
+	if ('expired' in result) throw new ValidationError('Campaign has ended and cannot be moderated');
+	return result;
 }

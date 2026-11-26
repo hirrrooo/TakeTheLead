@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+	import { afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		ArrowLeft,
 		CircleCheck,
@@ -18,11 +21,13 @@
 	import { Card, CardContent, CardDescription, CardHeader } from '$lib/components/ui/card';
 	import { Field, FieldError, FieldGroup, FieldLabel } from '$lib/components/ui/field';
 	import { Input } from '$lib/components/ui/input';
+	import type { PageProps } from './$types';
 
 	type Mode = 'signin' | 'signup';
 	type Status = 'idle' | 'submitting' | 'success';
 
-	let mode = $state<Mode>('signin');
+	let { form }: PageProps = $props();
+	let mode = $state<Mode>(page.url.searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
 	let status = $state<Status>('idle');
 
 	// Sign-in fields
@@ -60,6 +65,11 @@
 		'bg-primary'
 	] as const;
 
+	// The header links here with ?mode=signup, including while this page is already open.
+	afterNavigate(({ to }) => {
+		if (to) switchMode(to.url.searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
+	});
+
 	function switchMode(next: Mode) {
 		if (mode === next) return;
 		mode = next;
@@ -88,13 +98,12 @@
 		return Object.keys(next).length === 0;
 	}
 
-	async function handleSubmit(e: SubmitEvent) {
-		e.preventDefault();
-		if (!validate()) return;
+	function handleSubmit(e: SubmitEvent) {
+		if (!validate()) {
+			e.preventDefault();
+			return;
+		}
 		status = 'submitting';
-		// No backend yet — simulate a round-trip.
-		await new Promise((resolve) => setTimeout(resolve, 900));
-		status = 'success';
 	}
 
 	function reset() {
@@ -128,7 +137,7 @@
 		<PawPrint
 			class="pointer-events-none absolute -right-16 -bottom-16 size-96 rotate-12 opacity-[0.06]"
 		/>
-		<a href={resolve('/')} class="inline-flex items-center gap-3">
+		<a href={resolve('/campaign')} class="inline-flex items-center gap-3">
 			<span class="flex size-11 items-center justify-center rounded-xl bg-background">
 				<img src="/ttl-logo.svg" alt="" class="size-7" />
 			</span>
@@ -170,7 +179,7 @@
 	<section class="flex flex-1 items-center justify-center bg-background px-4 py-10 sm:px-8">
 		<div class="w-full max-w-md">
 			<a
-				href={resolve('/')}
+				href={resolve('/campaign')}
 				class="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground lg:hidden"
 			>
 				<img src="/ttl-logo.svg" alt="" class="size-6" />
@@ -191,7 +200,7 @@
 						<p class="max-w-xs text-sm text-muted-foreground">
 							{mode === 'signin'
 								? 'You’re signed in. Your next campaign is waiting.'
-								: 'Check your inbox to confirm your email, then start your first campaign.'}
+								: 'Your account is ready. Start your first campaign from your dashboard.'}
 						</p>
 						<Button href="/dashboard" class="mt-2 w-full sm:w-auto">
 							Go to dashboard
@@ -249,7 +258,24 @@
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<form novalidate onsubmit={handleSubmit}>
+						<form
+							method="POST"
+							action={mode === 'signin' ? '?/signInEmail' : '?/signUpEmail'}
+							novalidate
+							onsubmit={handleSubmit}
+							use:enhance={() => {
+								status = 'submitting';
+								return async ({ result, update }) => {
+									await update();
+									if (result.type === 'success') {
+										status = 'success';
+									} else {
+										status = 'idle';
+									}
+								};
+							}}
+						>
+							<input type="hidden" name="mode" value={mode} />
 							<FieldGroup>
 								{#if mode === 'signup'}
 									<Field data-invalid={errors.fullName ? 'true' : undefined}>
@@ -443,6 +469,10 @@
 									</div>
 								{/if}
 							</FieldGroup>
+
+							{#if form?.message && form.mode === mode}
+								<p class="mt-4 text-sm text-destructive" role="alert">{form.message}</p>
+							{/if}
 
 							<Button type="submit" class="mt-6 w-full" disabled={isSubmitting}>
 								{#if isSubmitting}
