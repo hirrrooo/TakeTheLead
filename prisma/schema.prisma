@@ -145,7 +145,7 @@ model Campaign {
   // per-campaign presentation, NOT user identity (see plan rationale)
   isOwnerAnonymous Boolean @default(false)
   ownerDisplayName String?
-
+  ownerCity        String?
   vetHospitalId String?
   vetHospital   VetHospital? @relation(fields: [vetHospitalId], references: [id], onDelete: SetNull)
 
