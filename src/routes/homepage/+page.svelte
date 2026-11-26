@@ -22,6 +22,7 @@
 		CardTitle
 	} from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
+	import type { Pathname } from '$app/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -37,11 +38,11 @@
 	});
 
 	// Placeholder links until the real resource pages exist.
-	const resources = [
-		'Veterinary Costs and Why',
-		'Pet Insurance',
-		'Pet Credit Cards',
-		'Additional Information'
+	const resources: { label: string; href: Pathname }[] = [
+		{ label: 'Veterinary Costs and Why', href: '/vetcosts' },
+		{ label: 'Pet Insurance', href: '/contact-us' },
+		{ label: 'Pet Credit Cards', href: '/contact-us' },
+		{ label: 'Additional Information', href: '/contact-us' }
 	];
 
 	let copiedId = $state<string | null>(null);
@@ -230,10 +231,10 @@
 			</CardHeader>
 			<CardContent>
 				<ul class="grid justify-items-center gap-2 sm:grid-cols-2">
-					{#each resources as label (label)}
+					{#each resources as { label, href } (label)}
 						<li>
 							<a
-								href={resolve('/contact-us')}
+								href={resolve(href)}
 								class="inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
 							>
 								<ArrowLeft class="size-3.5 -rotate-45" aria-hidden="true" />
