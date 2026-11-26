@@ -18,12 +18,40 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const isOwner = locals.user?.id === campaign.ownerId;
 	if (campaign.visibility !== 'PUBLIC' && !isOwner) error(404, 'Campaign not found');
-	if (!['APPROVED', 'CLOSED'].includes(campaign.status) && !isOwner) {
+
+	if (campaign.status === 'WITHDRAWN') {
+		return {
+			campaign: {
+				id: campaign.id,
+				slug: campaign.slug,
+				title: 'Campaign withdrawn',
+				summary: '',
+				status: campaign.status,
+				live: false,
+				ended: false,
+				paused: false,
+				withdrawn: true,
+				startDate: (campaign.publishedAt ?? campaign.createdAt).toISOString(),
+				endDate: campaignEndDate(campaign).toISOString(),
+				goalCents: 0,
+				raisedCents: 0,
+				donorCount: 0,
+				ownerName: '',
+				ownerCity: null
+			},
+			recentDonors: [],
+			user: locals.user ? { id: locals.user.id, name: locals.user.name } : null,
+			isOwner,
+			donationKey: ''
+		};
+	}
+
+	if (!['APPROVED', 'CLOSED', 'PAUSED'].includes(campaign.status) && !isOwner) {
 		error(404, 'Campaign not found');
 	}
 
 	const recentDonors =
-		campaign.status === 'APPROVED' || campaign.status === 'CLOSED'
+		campaign.status === 'APPROVED' || campaign.status === 'CLOSED' || campaign.status === 'PAUSED'
 			? await listRecentDonors(campaign.id)
 			: [];
 
@@ -36,12 +64,15 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			status: campaign.status,
 			live: campaign.live,
 			ended: campaign.ended,
+			paused: campaign.paused,
+			withdrawn: false,
 			startDate: (campaign.publishedAt ?? campaign.createdAt).toISOString(),
 			endDate: campaignEndDate(campaign).toISOString(),
 			goalCents: campaign.goalAmountCents ?? 0,
 			raisedCents: campaign.raisedCents,
 			donorCount: campaign._count.donations,
-			ownerName: campaign.owner.name ?? 'A Take the Lead member'
+			ownerName: campaign.ownerName,
+			ownerCity: campaign.ownerCity
 		},
 		recentDonors,
 		user: locals.user ? { id: locals.user.id, name: locals.user.name } : null,
@@ -79,6 +110,16 @@ export const actions: Actions = {
 			const campaign = await findCampaign(params.slug);
 			if (!campaign || campaign.id !== campaignId) {
 				return fail(400, { donationError: 'This campaign could not be found.' });
+			}
+			if (campaign.status === 'WITHDRAWN') {
+				return fail(400, {
+					donationError: 'This campaign has been withdrawn and is no longer accepting donations.'
+				});
+			}
+			if (campaign.status === 'PAUSED') {
+				return fail(400, {
+					donationError: 'This campaign is paused and is not accepting donations right now.'
+				});
 			}
 			const payment = await getPaymentProvider().charge({
 				amountCents,

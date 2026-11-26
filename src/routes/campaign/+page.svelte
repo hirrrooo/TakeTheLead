@@ -174,7 +174,7 @@
 				name="q"
 				value={data.query}
 				maxlength="80"
-				placeholder="Search by pet, story, hospital, or organizer"
+				placeholder="Search by pet, city, story, hospital, or organizer"
 			/>
 			<button class="rounded-md bg-primary px-4 py-2 text-primary-foreground" type="submit">
 				Search
@@ -218,7 +218,8 @@
 						</div>
 						<p class="mt-2 line-clamp-3 text-sm text-muted-foreground">{campaign.summary}</p>
 						<p class="mt-3 text-sm text-muted-foreground">
-							Started {formatDate(campaign.startDate)}
+							By {campaign.ownerName}{campaign.ownerCity ? ` · ${campaign.ownerCity}` : ''} · Started
+							{formatDate(campaign.startDate)}
 						</p>
 						<div class="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm">
 							<span>{formatCurrency(campaign.raisedCents)} raised</span>

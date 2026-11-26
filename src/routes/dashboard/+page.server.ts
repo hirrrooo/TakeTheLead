@@ -15,6 +15,11 @@ import {
 	updateCampaignContent
 } from '$lib/server/db/campaigns';
 import {
+	formatPublicOwnerLabel,
+	looksLikeStreetAddress,
+	projectPublicOwner
+} from '$lib/server/db/owner-privacy';
+import {
 	acceptPromiseToPay,
 	buildPromiseToPayTexts,
 	setOwnerCampaignState,
@@ -53,6 +58,7 @@ function extractCreateDraft(form: FormData) {
 		vetHospitalId: String(form.get('vetHospitalId') ?? '').trim(),
 		hospitalName: String(form.get('hospitalName') ?? '').trim(),
 		hospitalCity: String(form.get('hospitalCity') ?? '').trim(),
+		ownerCity: String(form.get('ownerCity') ?? '').trim(),
 		coverImageUrl: String(form.get('coverImageUrl') ?? '').trim()
 	};
 }
@@ -72,6 +78,7 @@ function parseCampaignForm(form: FormData) {
 		vetHospitalId,
 		hospitalName,
 		hospitalCity,
+		ownerCity,
 		coverImageUrl
 	} = raw;
 
@@ -98,6 +105,13 @@ function parseCampaignForm(form: FormData) {
 		(hospitalName.length < 2 || hospitalName.length > 160 || hospitalCity.length > 100)
 	) {
 		return { ok: false as const, reason: 'fields' as const, createDraft: raw };
+	}
+	if (
+		ownerCity.length > 100 ||
+		(ownerCity.length > 0 && looksLikeStreetAddress(ownerCity)) ||
+		(vetHospitalId === 'new' && hospitalCity.length > 0 && looksLikeStreetAddress(hospitalCity))
+	) {
+		return { ok: false as const, reason: 'owner_city' as const, createDraft: raw };
 	}
 
 	if (coverImageUrl) {
@@ -150,6 +164,7 @@ function parseCampaignForm(form: FormData) {
 			vetHospitalId,
 			hospitalName,
 			hospitalCity,
+			ownerCity: ownerCity || null,
 			coverImageUrl: coverImageUrl || null
 		}
 	};
@@ -218,6 +233,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 					title: campaign.title,
 					summary: campaign.summary ?? '',
 					story: campaign.body,
+					ownerCity: campaign.ownerCity ?? '',
+					publicOwnerLabel: formatPublicOwnerLabel(
+						projectPublicOwner({
+							ownerName: locals.user.name ?? locals.user.email.split('@')[0],
+							isOwnerAnonymous: campaign.isOwnerAnonymous,
+							ownerDisplayName: campaign.ownerDisplayName,
+							ownerCity: campaign.ownerCity,
+							hospitalCity: campaign.vetHospital?.city ?? null
+						})
+					),
 					coverImageUrl: campaign.coverImageUrl,
 					status: campaign.status,
 					billAmountCents:
@@ -283,6 +308,12 @@ export const actions: Actions = {
 				return fail(400, {
 					error:
 						'What TakeTheLead covers plus your maximum owner obligation must equal the total veterinary bill.',
+					createDraft: parsed.createDraft
+				});
+			}
+			if (parsed.reason === 'owner_city') {
+				return fail(400, {
+					error: 'Enter your city name only — never include a street address or ZIP code.',
 					createDraft: parsed.createDraft
 				});
 			}
@@ -385,8 +416,16 @@ export const actions: Actions = {
 		const title = String(form.get('title') ?? '').trim();
 		const summary = String(form.get('summary') ?? '').trim();
 		const story = String(form.get('story') ?? '').trim();
+		const ownerCity = String(form.get('ownerCity') ?? '').trim();
 		const coverImageUrl = String(form.get('coverImageUrl') ?? '').trim();
-		const editDraft = { title, summary, story, coverImageUrl };
+		const editDraft = { title, summary, story, ownerCity, coverImageUrl };
+
+		if (ownerCity.length > 100 || (ownerCity.length > 0 && looksLikeStreetAddress(ownerCity))) {
+			return fail(400, {
+				editError: 'Enter your city name only — never include a street address or ZIP code.',
+				editDraft
+			});
+		}
 
 		if (
 			!campaignId ||
@@ -408,6 +447,7 @@ export const actions: Actions = {
 			title,
 			summary,
 			body: story,
+			ownerCity: ownerCity || null,
 			coverImageUrl: coverImageUrl || null
 		});
 		if (updated.count !== 1) {
@@ -444,8 +484,8 @@ export const actions: Actions = {
 		if (!locals.user) redirect(303, '/login');
 		const campaignId = String((await request.formData()).get('campaignId') ?? '').trim();
 		try {
-			await setOwnerCampaignState(campaignId, locals.user.id, 'WITHDRAW');
-			return { success: 'withdrawn' };
+			const updated = await setOwnerCampaignState(campaignId, locals.user.id, 'WITHDRAW');
+			return { success: 'withdrawn', withdrawnSlug: updated.slug };
 		} catch (error) {
 			if (error instanceof ValidationError) return fail(409, { error: error.message });
 			throw error;

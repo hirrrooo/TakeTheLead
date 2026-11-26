@@ -1,6 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { campaignEndDate, closeExpiredCampaigns } from '$lib/server/db/campaigns';
+import {
+	campaignEndDate,
+	closeExpiredCampaigns,
+	liveCampaignWhere
+} from '$lib/server/db/campaigns';
+import { projectPublicOwner } from '$lib/server/db/owner-privacy';
 import { auth } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,11 +16,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	await closeExpiredCampaigns(now);
 
 	const liveCampaigns = await db.campaign.findMany({
-		where: {
-			status: 'APPROVED',
-			visibility: 'PUBLIC',
-			deletedAt: null
-		},
+		where: liveCampaignWhere(now),
 		select: {
 			id: true,
 			slug: true,
@@ -27,6 +28,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 			deadline: true,
 			publishedAt: true,
 			createdAt: true,
+			isOwnerAnonymous: true,
+			ownerDisplayName: true,
+			ownerCity: true,
+			owner: { select: { name: true } },
+			vetHospital: { select: { city: true } },
 			pets: {
 				where: { role: 'PRIMARY' },
 				select: { pet: { select: { name: true } } }
@@ -75,6 +81,11 @@ function mapCampaigns(
 		deadline: Date | null;
 		publishedAt: Date | null;
 		createdAt: Date;
+		isOwnerAnonymous: boolean;
+		ownerDisplayName: string | null;
+		ownerCity: string | null;
+		owner: { name: string | null };
+		vetHospital: { city: string | null } | null;
 		pets: { pet: { name: string } }[];
 	}[],
 	now: Date
@@ -82,12 +93,21 @@ function mapCampaigns(
 	return campaigns.map((c) => {
 		const goal = c.goalAmountCents ?? c.billAmountCents ?? 0;
 		const deadline = campaignEndDate(c);
+		const publicOwner = projectPublicOwner({
+			ownerName: c.owner.name,
+			isOwnerAnonymous: c.isOwnerAnonymous,
+			ownerDisplayName: c.ownerDisplayName,
+			ownerCity: c.ownerCity,
+			hospitalCity: c.vetHospital?.city ?? null
+		});
 		return {
 			id: c.id,
 			slug: c.slug,
 			title: c.title,
 			coverImageUrl: c.coverImageUrl,
 			petName: c.pets[0]?.pet.name ?? null,
+			ownerName: publicOwner.ownerName,
+			ownerCity: publicOwner.ownerCity,
 			raisedCents: c.raisedCents,
 			goalCents: goal,
 			percent: goal > 0 ? Math.min(100, Math.round((c.raisedCents / goal) * 100)) : 0,
