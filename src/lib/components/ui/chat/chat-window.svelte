@@ -296,7 +296,7 @@
 					{/if}
 					{#if shouldShowBusyNotice(m)}
 						<p class="text-xs text-muted-foreground">
-							Our AI helper is busy, so this is a short answer.
+							I couldn’t generate a summary, but here are the funding options I found.
 						</p>
 					{/if}
 				</div>

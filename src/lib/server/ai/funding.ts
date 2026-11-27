@@ -358,7 +358,6 @@ export async function answerFundingQuestion(
 			aiUsed = true;
 		} catch (e) {
 			if (!(e instanceof LlmError)) throw e;
-			console.error('[ai] LLM fallback:', e.message);
 			reply = fallbackReply(sources);
 			aiFallback = true;
 		}
