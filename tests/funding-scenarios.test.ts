@@ -91,6 +91,7 @@ for (const sc of scenarios) {
 		assert.ok(r.sources.length <= 6);
 		assert.equal(calls, before + 1, 'exactly one LLM call');
 		assert.equal(r.aiUsed, true);
+		assert.equal(r.aiFallback, false);
 		for (const s of r.sources) {
 			assert.match(s.url, /^https?:\/\//, `${s.name} has a link`);
 			assert.ok(s.reason.length > 10, `${s.name} has a reason`);
@@ -143,6 +144,8 @@ test('asks for the pet type before searching', async () => {
 	const r = await answerFundingQuestion(db, llm, { question: 'I need help paying my vet bill.' });
 	assert.equal(r.intent, 'need_details');
 	assert.equal(r.sources.length, 0);
+	assert.equal(r.aiUsed, false);
+	assert.equal(r.aiFallback, false);
 	assert.equal(calls, before, 'no LLM call while asking for details');
 	assert.match(r.reply, /pet type/);
 	assert.match(r.reply, /ZIP code/);

@@ -2,7 +2,7 @@
 // body:  { message: string, species?: string, urgent?: boolean, zip?: string,
 //          answers?: { breathing?: boolean, ... } }
 // reply: { kind: 'emergency', urgency, label, reply, reasons }
-//     or { kind: 'funding', intent, needs, reply, aiUsed, sources: [...], urgency?, label? }
+//     or { kind: 'funding', intent, needs, reply, aiUsed, aiFallback, sources: [...], urgency?, label? }
 // The decision itself lives in $lib/server/ai/pipeline so the tests can run it without SvelteKit.
 import { json, error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';

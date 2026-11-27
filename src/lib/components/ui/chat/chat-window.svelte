@@ -3,6 +3,7 @@
 	import { CircleAlert, ExternalLink, HandCoins, HeartPulse, SendHorizontal } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import { parseChatBlocks, shouldShowBusyNotice, visibleSources, type InlineRun } from './format';
 
 	type Question = { id: string; text: string; urgency: string };
 	type Source = {
@@ -24,6 +25,7 @@
 				label?: string;
 				sources?: Source[];
 				aiUsed?: boolean;
+				aiFallback?: boolean;
 				error?: boolean;
 		  };
 
@@ -93,7 +95,8 @@
 					label: data.label,
 					text: data.reply,
 					sources: data.sources,
-					aiUsed: data.aiUsed
+					aiUsed: data.aiUsed,
+					aiFallback: data.aiFallback
 				});
 			}
 		} catch {
@@ -177,6 +180,20 @@
 	const nice = (s: string) => s.toLowerCase().replace(/_/g, ' ');
 </script>
 
+{#snippet renderRuns(runs: InlineRun[])}
+	{#each runs as run (run.id)}
+		{#if run.bold && run.italic}
+			<strong class="font-semibold"><em>{run.text}</em></strong>
+		{:else if run.bold}
+			<strong class="font-semibold">{run.text}</strong>
+		{:else if run.italic}
+			<em>{run.text}</em>
+		{:else}
+			{run.text}
+		{/if}
+	{/each}
+{/snippet}
+
 <div class="flex h-full min-h-0 flex-col">
 	<p
 		class="flex items-start gap-2 border-b bg-secondary px-4 py-2 text-xs text-secondary-foreground"
@@ -204,6 +221,7 @@
 					<p class="whitespace-pre-wrap">{m.text}</p>
 				</div>
 			{:else}
+				{@const shownSources = visibleSources(m.text, m.sources, shouldShowBusyNotice(m))}
 				<div class="max-w-[90%] space-y-2">
 					{#if m.label}
 						<p
@@ -212,17 +230,42 @@
 							{m.label}
 						</p>
 					{/if}
-					<p
+					<div
 						class={[
-							'rounded-2xl rounded-bl-sm px-3 py-2 text-sm whitespace-pre-wrap',
+							'space-y-2 rounded-2xl rounded-bl-sm px-3 py-2 text-sm',
 							m.error ? 'bg-destructive/10 text-destructive' : 'bg-muted text-foreground'
 						]}
 					>
-						{m.text}
-					</p>
-					{#if m.sources?.length}
+						{#if m.error}
+							<p class="whitespace-pre-wrap">{m.text}</p>
+						{:else}
+							{#each parseChatBlocks(m.text) as block (block.id)}
+								{#if block.kind === 'paragraph'}
+									<p class="leading-relaxed">
+										{#each block.lines as line, lineIndex (line.id)}
+											{#if lineIndex > 0}<br />{/if}
+											{@render renderRuns(line.runs)}
+										{/each}
+									</p>
+								{:else if block.ordered}
+									<ol start={block.start} class="list-decimal space-y-1.5 pl-5 leading-relaxed">
+										{#each block.items as item (item.id)}
+											<li>{@render renderRuns(item.runs)}</li>
+										{/each}
+									</ol>
+								{:else}
+									<ul class="list-disc space-y-1.5 pl-5 leading-relaxed">
+										{#each block.items as item (item.id)}
+											<li>{@render renderRuns(item.runs)}</li>
+										{/each}
+									</ul>
+								{/if}
+							{/each}
+						{/if}
+					</div>
+					{#if shownSources.length}
 						<ul class="grid gap-2">
-							{#each m.sources as s (s.id)}
+							{#each shownSources as s (s.id)}
 								<li>
 									<a
 										href={s.url}
@@ -252,9 +295,9 @@
 							{/each}
 						</ul>
 					{/if}
-					{#if m.aiUsed === false}
+					{#if shouldShowBusyNotice(m)}
 						<p class="text-xs text-muted-foreground">
-							Our AI helper is busy, so this is a short answer.
+							I couldn’t generate a summary, but here are the funding options I found.
 						</p>
 					{/if}
 				</div>

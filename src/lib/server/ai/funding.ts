@@ -296,6 +296,8 @@ export function intakeReply(missing: MissingDetail[]): string {
 export type FundingAnswer = {
 	reply: string;
 	aiUsed: boolean;
+	/** True only when the LLM was needed (sources.length > 0) and fell back on LlmError. */
+	aiFallback: boolean;
 	/** 'need_details' = we asked for more before searching (no sources yet). */
 	intent: 'funding' | 'need_details';
 	/** Details we would still like, even when we did answer. */
@@ -334,6 +336,7 @@ export async function answerFundingQuestion(
 		return {
 			reply: (distressed ? DISTRESS_PREFIX + ' ' : '') + intakeReply(needs),
 			aiUsed: false,
+			aiFallback: false,
 			intent: 'need_details',
 			needs,
 			sources: []
@@ -343,19 +346,23 @@ export async function answerFundingQuestion(
 	const all = await loadLiveSources(db);
 	const sources = pickSources(all, resolved);
 	let reply: string;
-	let aiUsed = true;
-	try {
-		reply = sources.length
-			? await chat(llm, buildMessages(resolved, sources))
-			: fallbackReply(sources);
-		reply = reply
-			.replace(/https?:\/\/\S+|\S+@\S+\.\S+/g, '')
-			.replace(/[ \t]{2,}/g, ' ')
-			.trim();
-	} catch (e) {
-		if (!(e instanceof LlmError)) throw e;
+	let aiUsed = false;
+	let aiFallback = false;
+	if (sources.length) {
+		try {
+			reply = await chat(llm, buildMessages(resolved, sources));
+			reply = reply
+				.replace(/https?:\/\/\S+|\S+@\S+\.\S+/g, '')
+				.replace(/[ \t]{2,}/g, ' ')
+				.trim();
+			aiUsed = true;
+		} catch (e) {
+			if (!(e instanceof LlmError)) throw e;
+			reply = fallbackReply(sources);
+			aiFallback = true;
+		}
+	} else {
 		reply = fallbackReply(sources);
-		aiUsed = false;
 	}
 
 	// TTL-304 guards, applied to the AI text and the fallback alike.
@@ -375,6 +382,7 @@ export async function answerFundingQuestion(
 	return {
 		reply,
 		aiUsed,
+		aiFallback,
 		intent: 'funding',
 		needs,
 		sources: sources.map((s, i) => ({

@@ -69,6 +69,7 @@ export async function answerChat(
 				kind: 'funding',
 				reply: canned,
 				aiUsed: false,
+				aiFallback: false,
 				intent: 'need_details',
 				needs: ['pet type', 'what the care is for', 'estimated cost', 'ZIP code'],
 				sources: [],
