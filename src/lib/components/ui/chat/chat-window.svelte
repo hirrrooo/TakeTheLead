@@ -221,7 +221,7 @@
 					<p class="whitespace-pre-wrap">{m.text}</p>
 				</div>
 			{:else}
-				{@const shownSources = visibleSources(m.text, m.sources)}
+				{@const shownSources = visibleSources(m.text, m.sources, shouldShowBusyNotice(m))}
 				<div class="max-w-[90%] space-y-2">
 					{#if m.label}
 						<p

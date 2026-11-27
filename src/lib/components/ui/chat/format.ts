@@ -154,45 +154,51 @@ export function shouldShowBusyNotice(message: {
 	return message.aiFallback ?? (message.aiUsed === false && Boolean(message.sources?.length));
 }
 
-const SOURCE_SUFFIX =
-	/\s+(?:charitable pet foundation|foundation|relief urgent care grant|urgent care grant|veterinary financing|payment plans|medical assistance program|emergency medical fund|clinic)$/i;
-
 function normalizeMatchText(s: string): string {
 	return s.toLowerCase().replace(/[‘’`]/g, "'").replace(/[—–]/g, '-').replace(/\s+/g, ' ').trim();
 }
 
 export function visibleSources<T extends { number: number; name: string }>(
 	reply: string,
-	sources?: T[]
+	sources?: T[],
+	fallback = false
 ): T[] {
 	if (!sources?.length) return [];
-	const cited = new Set<number>();
-	for (const m of reply.matchAll(/\[([\d,\s]+)\]/g)) {
+	if (fallback) return sources;
+	const normReply = normalizeMatchText(reply);
+	const citePos = new Map<number, number>();
+	for (const m of normReply.matchAll(/\[([\d,\s]+)\]/g)) {
 		for (const n of m[1].split(',')) {
 			const num = Number(n.trim());
-			if (Number.isInteger(num) && num > 0) cited.add(num);
+			if (Number.isInteger(num) && num > 0 && !citePos.has(num)) {
+				citePos.set(num, m.index ?? 0);
+			}
 		}
 	}
-	const normReply = normalizeMatchText(reply);
-	const matched = sources.filter((s) => {
-		if (cited.has(s.number)) return true;
+	const ranked: { source: T; pos: number; index: number }[] = [];
+	for (const [index, s] of sources.entries()) {
+		let bestPos = citePos.get(s.number) ?? Infinity;
 		const full = normalizeMatchText(s.name);
 		const base = full
 			.split(' - ')[0]
 			.replace(/,\s*(?:va\s+)?inc\.?$/i, '')
 			.trim();
-		const noThe = base.replace(/^the\s+/, '');
-		const variants = new Set<string>([full, full.replace(/^the\s+/, ''), base, noThe]);
-		const stem = noThe.replace(SOURCE_SUFFIX, '').trim();
-		if (stem && (stem.includes(' ') || stem === 'redrover' || stem === 'carecredit')) {
-			variants.add(stem);
-		}
+		const variants = new Set<string>([
+			full,
+			full.replace(/^the\s+/, ''),
+			base,
+			base.replace(/^the\s+/, '')
+		]);
 		for (const v of variants) {
 			if (v.length < 3) continue;
 			const escaped = v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			if (new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).test(normReply)) return true;
+			const match = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).exec(normReply);
+			if (match) {
+				const start = match.index + match[1].length;
+				if (start < bestPos) bestPos = start;
+			}
 		}
-		return false;
-	});
-	return matched.length ? matched : sources;
+		if (bestPos < Infinity) ranked.push({ source: s, pos: bestPos, index });
+	}
+	return ranked.sort((a, b) => a.pos - b.pos || a.index - b.index).map((r) => r.source);
 }
