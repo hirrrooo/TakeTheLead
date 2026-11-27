@@ -116,6 +116,8 @@ for (const [i, message] of offTopic.entries()) {
 		if (r.kind !== 'funding') return;
 		assert.equal(r.intent, 'need_details');
 		assert.equal(r.sources.length, 0);
+		assert.equal(r.aiUsed, false);
+		assert.equal(r.aiFallback, false);
 		assert.match(r.reply, /only able to help with paying for veterinary care/);
 		assert.equal(calls, before, 'no LLM call for off-topic');
 	});
@@ -130,6 +132,7 @@ for (const [i, message] of upset.entries()) {
 		assert.equal(hasBannedPhrase(r.reply), null, 'no cost shaming');
 		assert.ok(r.sources.length >= 3, 'still gets real help');
 		assert.equal(r.intent, 'funding');
+		assert.equal(r.aiFallback, false);
 	});
 }
 
@@ -139,6 +142,8 @@ test('a greeting gets a welcome, not the off-topic message, and no LLM call', as
 	assert.equal(r.kind, 'funding');
 	if (r.kind !== 'funding') return;
 	assert.match(r.reply, /What is going on with your pet/);
+	assert.equal(r.aiUsed, false);
+	assert.equal(r.aiFallback, false);
 	assert.equal(calls, before);
 });
 

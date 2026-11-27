@@ -130,6 +130,7 @@ test('looks up first, filters species, passes rows to the LLM, links only from D
 	assert.match(lastBody!.messages[1].content, /\[1\] RedRover/);
 	assert.match(lastBody!.messages[1].content, /income limits apply/);
 	assert.equal(r.aiUsed, true);
+	assert.equal(r.aiFallback, false);
 	assert.equal(r.sources.find((s) => s.name === 'CareCredit')?.mustRepay, true);
 });
 
@@ -140,6 +141,17 @@ test('still answers when the LLM is down', async () => {
 		{ question: 'help with my cat bill' }
 	);
 	assert.equal(r.aiUsed, false);
+	assert.equal(r.aiFallback, true);
 	assert.match(r.reply, /RedRover/);
 	assert.ok(r.sources.length >= 3);
+});
+
+test('reports aiUsed=false and aiFallback=false when no DB funding sources match', async () => {
+	const emptyDb = { fundingSource: { findMany: async () => [] } };
+	const r = await answerFundingQuestion(emptyDb, llm, {
+		question: 'How can I pay for my dog’s surgery?'
+	});
+	assert.equal(r.sources.length, 0);
+	assert.equal(r.aiUsed, false);
+	assert.equal(r.aiFallback, false);
 });
