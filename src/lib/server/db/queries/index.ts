@@ -43,6 +43,8 @@ export async function setOwnerCampaignState(
 	ownerId: string,
 	action: 'PAUSE' | 'RESUME' | 'WITHDRAW'
 ) {
+	if (!campaignId.trim()) throw new ValidationError('Campaign not found.');
+
 	const now = new Date();
 	const campaign = await db.campaign.findFirst({
 		where: { id: campaignId, ownerId, deletedAt: null },
@@ -56,22 +58,28 @@ export async function setOwnerCampaignState(
 	});
 	if (!campaign) throw new ValidationError('Campaign not found.');
 
-	if (action === 'RESUME') {
-		if (!campaign.promiseToPay?.accepted) {
-			throw new ValidationError(
-				'Cannot resume: the owner has not accepted the promise-to-pay terms.'
-			);
-		}
+	if (action === 'RESUME' && !campaign.promiseToPay?.accepted) {
+		throw new ValidationError(
+			'Cannot resume: the owner has not accepted the promise-to-pay terms.'
+		);
+	}
+
+	if (campaign.status === 'APPROVED' || campaign.status === 'PAUSED') {
 		const deadline = campaignEndDate(campaign);
 		if (deadline <= now) {
 			await db.campaign.updateMany({
-				where: { id: campaignId, ownerId, status: 'PAUSED' },
+				where: { id: campaignId, ownerId, status: { in: ['APPROVED', 'PAUSED'] } },
 				data: { status: 'CLOSED', closedAt: deadline }
 			});
-			throw new ValidationError('This campaign has ended and cannot be resumed.');
+			throw new ValidationError(
+				action === 'RESUME'
+					? 'This campaign has ended and cannot be resumed.'
+					: action === 'PAUSE'
+						? 'This campaign has ended and cannot be paused.'
+						: 'This campaign has ended and cannot be withdrawn.'
+			);
 		}
 	}
-
 	const transitions = {
 		PAUSE: { from: ['APPROVED'], to: 'PAUSED' },
 		RESUME: { from: ['PAUSED'], to: 'APPROVED' },

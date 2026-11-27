@@ -7,6 +7,7 @@ import {
 	campaignStartDate,
 	getCampaignState
 } from './campaign-state';
+import { projectPublicOwner, projectSearchableOwner, stripOwnerRelations } from './owner-privacy';
 import { searchTerms } from './campaign-search';
 import { buildPromiseToPayTexts, ValidationError } from './queries';
 
@@ -197,6 +198,7 @@ export interface PublishedCampaignDraft {
 	vetHospitalId: string;
 	hospitalName?: string;
 	hospitalCity?: string;
+	ownerCity?: string | null;
 	coverImageUrl?: string | null;
 }
 
@@ -275,6 +277,7 @@ export async function createPublishedCampaign(ownerId: string, draft: PublishedC
 				goalAmountCents: draft.ttlCoversCents,
 				billAmountCents: draft.billAmountCents,
 				ownerId,
+				ownerCity: draft.ownerCity || null,
 				vetHospitalId,
 				status: 'APPROVED',
 				visibility: 'PUBLIC',
@@ -318,6 +321,7 @@ export interface CampaignContentEdit {
 	title: string;
 	summary: string;
 	body: string;
+	ownerCity?: string | null;
 	coverImageUrl?: string | null;
 }
 
@@ -344,6 +348,7 @@ export async function updateCampaignContent(
 			title: edit.title,
 			summary: edit.summary,
 			body: edit.body,
+			...(edit.ownerCity !== undefined ? { ownerCity: edit.ownerCity || null } : {}),
 			coverImageUrl: edit.coverImageUrl || null
 		}
 	});
@@ -452,7 +457,24 @@ export async function findCampaign(slug: string, now = new Date()) {
 	if (!campaign) return null;
 
 	const state = getCampaignState(campaign, now);
-	return { ...campaign, state, live: state === 'live', ended: state === 'ended' };
+	const publicOwner = projectPublicOwner({
+		ownerName: campaign.owner.name,
+		isOwnerAnonymous: campaign.isOwnerAnonymous,
+		ownerDisplayName: campaign.ownerDisplayName,
+		ownerCity: campaign.ownerCity
+	});
+	const safeCampaign = stripOwnerRelations(campaign);
+
+	return {
+		...safeCampaign,
+		ownerName: publicOwner.ownerName,
+		ownerCity: publicOwner.ownerCity,
+		state,
+		live: state === 'live',
+		ended: state === 'ended',
+		paused: state === 'paused',
+		withdrawn: campaign.status === 'WITHDRAWN'
+	};
 }
 
 export interface RecentDonorOptions {
@@ -531,7 +553,8 @@ export function liveCampaignWhere(now: Date): Prisma.CampaignWhereInput {
 
 /**
  * Every search word must match somewhere in the campaign: title, short
- * description, story, owner name, pet name or veterinary hospital name.
+ * description, story, owner first name (or anonymous display name), city,
+ * pet name, or veterinary hospital name. Never matches last names or addresses.
  */
 export function campaignSearchWhere(query: string): Prisma.CampaignWhereInput[] {
 	return searchTerms(query).map((term) => ({
@@ -539,7 +562,21 @@ export function campaignSearchWhere(query: string): Prisma.CampaignWhereInput[] 
 			{ title: { contains: term } },
 			{ summary: { contains: term } },
 			{ body: { contains: term } },
-			{ owner: { name: { contains: term } } },
+			{
+				AND: [
+					{ isOwnerAnonymous: false },
+					{ owner: { name: { startsWith: term } } },
+					{ NOT: { owner: { name: { contains: '@' } } } }
+				]
+			},
+			{
+				AND: [
+					{ isOwnerAnonymous: true },
+					{ ownerDisplayName: { contains: term } },
+					{ NOT: { ownerDisplayName: { contains: '@' } } }
+				]
+			},
+			{ AND: [{ ownerCity: { contains: term } }, { NOT: { ownerCity: { contains: '@' } } }] },
 			{ pets: { some: { pet: { name: { contains: term } } } } },
 			{ vetHospital: { name: { contains: term } } }
 		]
@@ -553,6 +590,8 @@ export function campaignSearchWhere(query: string): Prisma.CampaignWhereInput[] 
 export async function listPublicCampaigns(now = new Date(), take = 50, query = '') {
 	await closeExpiredCampaigns(now);
 
+	const terms = searchTerms(query).map((term) => term.toLowerCase());
+
 	const campaigns = await db.campaign.findMany({
 		where: {
 			visibility: 'PUBLIC',
@@ -561,26 +600,60 @@ export async function listPublicCampaigns(now = new Date(), take = 50, query = '
 			AND: campaignSearchWhere(query)
 		},
 		orderBy: { createdAt: 'desc' },
-		take,
+		...(terms.length === 0 ? { take } : {}),
 		include: {
 			owner: { select: { name: true } },
+			vetHospital: { select: { name: true } },
+			pets: { select: { pet: { select: { name: true } } } },
 			_count: { select: { donations: { where: { status: 'COMPLETED' } } } }
 		}
 	});
 
-	return campaigns.map((campaign) => ({
-		id: campaign.id,
-		slug: campaign.slug,
-		title: campaign.title,
-		summary: campaign.summary ?? campaign.body,
-		status: getCampaignState(campaign, now) === 'ended' ? ('ended' as const) : ('live' as const),
-		startDate: campaignStartDate(campaign).toISOString(),
-		endDate: campaignEndDate(campaign).toISOString(),
-		goalCents: campaign.goalAmountCents ?? 0,
-		raisedCents: campaign.raisedCents,
-		donorCount: campaign._count.donations,
-		ownerName: campaign.owner.name ?? 'A Take the Lead member'
-	}));
+	const filtered =
+		terms.length === 0
+			? campaigns
+			: campaigns.filter((campaign) => {
+					const searchableOwner = projectSearchableOwner({
+						ownerName: campaign.owner.name,
+						isOwnerAnonymous: campaign.isOwnerAnonymous,
+						ownerDisplayName: campaign.ownerDisplayName,
+						ownerCity: campaign.ownerCity
+					});
+					const haystack = [
+						campaign.title,
+						campaign.summary ?? '',
+						campaign.body,
+						searchableOwner.ownerName ?? '',
+						searchableOwner.ownerCity ?? '',
+						campaign.vetHospital?.name ?? '',
+						...campaign.pets.map((p) => p.pet.name)
+					].map((value) => value.toLowerCase());
+
+					return terms.every((term) => haystack.some((value) => value.includes(term)));
+				});
+
+	return filtered.slice(0, take).map((campaign) => {
+		const publicOwner = projectPublicOwner({
+			ownerName: campaign.owner.name,
+			isOwnerAnonymous: campaign.isOwnerAnonymous,
+			ownerDisplayName: campaign.ownerDisplayName,
+			ownerCity: campaign.ownerCity
+		});
+		return {
+			id: campaign.id,
+			slug: campaign.slug,
+			title: campaign.title,
+			summary: campaign.summary ?? campaign.body,
+			status: getCampaignState(campaign, now) === 'ended' ? ('ended' as const) : ('live' as const),
+			startDate: campaignStartDate(campaign).toISOString(),
+			endDate: campaignEndDate(campaign).toISOString(),
+			goalCents: campaign.goalAmountCents ?? 0,
+			raisedCents: campaign.raisedCents,
+			donorCount: campaign._count.donations,
+			ownerName: publicOwner.ownerName,
+			ownerCity: publicOwner.ownerCity
+		};
+	});
 }
 
 /** Totals across live campaigns, from COMPLETED donations only. */

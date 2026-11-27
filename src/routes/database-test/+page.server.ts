@@ -10,7 +10,8 @@
  * Every write goes through src/lib/server/db/queries, never a raw db.update, so
  * the page also proves the guard layer works — including the rejections.
  */
-import { fail } from '@sveltejs/kit';
+import { dev } from '$app/environment';
+import { error, fail } from '@sveltejs/kit';
 import { auth } from '$lib/server/auth';
 import {
 	checkRaisedCentsConsistency,
@@ -33,6 +34,10 @@ import {
 	ValidationError
 } from '$lib/server/db/queries';
 import type { Actions, PageServerLoad } from './$types';
+
+function requireDevBench() {
+	if (!dev) error(404, 'Not found');
+}
 
 /** Demo identities the page can act as. The system user is excluded on purpose. */
 const ACTION_USERS = ['seed_maria', 'seed_james', 'seed_pat', 'seed_mod'] as const;
@@ -74,6 +79,7 @@ function bad(title: string, error: unknown) {
 }
 
 export const load: PageServerLoad = async ({ url }) => {
+	requireDevBench();
 	const zip = url.searchParams.get('zip')?.trim() ?? '';
 	const species = url.searchParams.get('species')?.trim() ?? '';
 	const scope = url.searchParams.get('scope')?.trim() ?? '';
@@ -193,6 +199,7 @@ export const actions: Actions = {
 	 * immediately; guests start PENDING so the transition can be shown after.
 	 */
 	donate: async ({ request }) => {
+		requireDevBench();
 		const form = await request.formData();
 		const campaignId = String(form.get('campaignId') ?? '').trim();
 		const amountCents = parseDollars(form.get('amount'));
@@ -235,6 +242,7 @@ export const actions: Actions = {
 
 	/** PENDING -> COMPLETED / REFUNDED / FAILED, keeping the cache consistent. */
 	transition: async ({ request }) => {
+		requireDevBench();
 		const form = await request.formData();
 		const donationId = String(form.get('donationId') ?? '').trim();
 		const status = String(form.get('status') ?? '').trim();
@@ -262,6 +270,7 @@ export const actions: Actions = {
 
 	/** requireCampaignAccess: OWNER/MANAGER pass, VIEWER/PENDING/outsiders do not. */
 	access: async ({ request }) => {
+		requireDevBench();
 		const form = await request.formData();
 		const campaignId = String(form.get('campaignId') ?? '');
 		const userId = String(form.get('asUser') ?? ACTION_USERS[0]);
@@ -280,6 +289,7 @@ export const actions: Actions = {
 
 	/** requireCampaignOwner: co-managers are NOT enough. */
 	owner: async ({ request }) => {
+		requireDevBench();
 		const form = await request.formData();
 		const campaignId = String(form.get('campaignId') ?? '');
 		const userId = String(form.get('asUser') ?? ACTION_USERS[0]);
@@ -298,6 +308,7 @@ export const actions: Actions = {
 	 * (ttlCoversCents + ownerMaxObligationCents === billAmountCents).
 	 */
 	promise: async ({ request }) => {
+		requireDevBench();
 		const form = await request.formData();
 		const campaignId = String(form.get('campaignId') ?? '');
 		const userId = String(form.get('asUser') ?? ACTION_USERS[0]);
@@ -339,6 +350,7 @@ export const actions: Actions = {
 	 * Promise-to-pay acceptance is not required for approval.
 	 */
 	moderate: async ({ request }) => {
+		requireDevBench();
 		const form = await request.formData();
 		const campaignId = String(form.get('campaignId') ?? '');
 		const reviewerId = String(form.get('asUser') ?? 'seed_mod');
@@ -359,6 +371,7 @@ export const actions: Actions = {
 
 	/** Self-heal the raisedCents cache for every campaign. */
 	recompute: async () => {
+		requireDevBench();
 		const { recomputed, audit } = await recomputeAllRaisedCentsCaches();
 		return {
 			raisedCentsCheck: audit,
@@ -378,6 +391,7 @@ export const actions: Actions = {
 	 * which means a successful sign-in here also signs the browser into /dashboard.
 	 */
 	benchSignUp: async ({ request }) => {
+		requireDevBench();
 		const form = await request.formData();
 		const name = String(form.get('name') ?? '').trim();
 		const email = String(form.get('email') ?? '').trim();
@@ -399,6 +413,7 @@ export const actions: Actions = {
 	},
 
 	benchSignIn: async ({ request }) => {
+		requireDevBench();
 		const form = await request.formData();
 		const email = String(form.get('email') ?? '').trim();
 		const password = String(form.get('password') ?? '');
@@ -419,6 +434,7 @@ export const actions: Actions = {
 	},
 
 	benchSignOut: async ({ request }) => {
+		requireDevBench();
 		try {
 			await auth.api.signOut({ headers: request.headers });
 			return {

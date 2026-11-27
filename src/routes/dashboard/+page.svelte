@@ -8,20 +8,11 @@
 	let dismissedEditError = $state(false);
 	let editErrorVisible = $derived(Boolean(form?.editError) && !dismissedEditError);
 
-	let billInput = $state<string | number>('');
-	let ttlCoversInput = $state<string | number>('');
-	let selectedHospitalId = $state('');
-	let customHospitalName = $state('');
+	let billInput = $derived<string | number>(form?.createDraft?.billAmount ?? '');
+	let ttlCoversInput = $derived<string | number>(form?.createDraft?.ttlCoversAmount ?? '');
+	let selectedHospitalId = $derived(form?.createDraft?.vetHospitalId ?? '');
+	let customHospitalName = $derived(form?.createDraft?.hospitalName ?? '');
 	let promiseAccepted = $state(false);
-
-	$effect(() => {
-		if (form?.createDraft) {
-			billInput = form.createDraft.billAmount ?? '';
-			ttlCoversInput = form.createDraft.ttlCoversAmount ?? '';
-			selectedHospitalId = form.createDraft.vetHospitalId ?? '';
-			customHospitalName = form.createDraft.hospitalName ?? '';
-		}
-	});
 
 	function parsePreviewCents(raw: string | number | null | undefined): number | null {
 		const normalized = String(raw ?? '').trim();
@@ -122,6 +113,14 @@
 				Campaign resumed.
 			{:else if form.success === 'withdrawn'}
 				Campaign withdrawn. It is no longer listed for browsing.
+				{#if form.withdrawnSlug}
+					<a
+						class="ml-2 font-medium underline underline-offset-4"
+						href={resolve('/campaign/[slug]', { slug: form.withdrawnSlug })}
+					>
+						View campaign notice
+					</a>
+				{/if}
 			{/if}
 		</p>
 	{/if}
@@ -145,6 +144,12 @@
 						{#if data.campaign.hospital?.city}
 							· {data.campaign.hospital.city}
 						{/if}
+					</p>
+					<p class="text-xs text-muted-foreground">
+						Publicly shown as <strong class="text-foreground"
+							>{data.campaign.publicOwnerLabel}</strong
+						>
+						(first name and city only — never your address)
 					</p>
 				</div>
 				<div class="flex flex-wrap gap-2">
@@ -178,6 +183,12 @@
 
 			<p class="whitespace-pre-wrap text-muted-foreground">{data.campaign.summary}</p>
 
+			{#if data.campaign.status === 'PAUSED'}
+				<p class="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm" role="status">
+					This campaign is paused. It is hidden from browsing and donations are temporarily stopped
+					until you resume it.
+				</p>
+			{/if}
 			{#if data.campaign.status === 'APPROVED' || data.campaign.status === 'PAUSED'}
 				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 					<div class="rounded-lg bg-muted/50 p-4">
@@ -322,6 +333,19 @@
 							rows="5"
 							required>{form?.editDraft?.story ?? data.campaign.story}</textarea
 						>
+					</label>
+					<label class="grid gap-2 text-sm font-medium">
+						Your city (optional)
+						<input
+							class="rounded-md border bg-background px-3 py-2 font-normal"
+							name="ownerCity"
+							maxlength="100"
+							placeholder="e.g. Virginia Beach"
+							value={form?.editDraft?.ownerCity ?? data.campaign.ownerCity}
+						/>
+						<span class="text-xs font-normal text-muted-foreground">
+							Only your first name and city appear on public pages — never your street address.
+						</span>
 					</label>
 					<label class="grid gap-2 text-sm font-medium">
 						Campaign photo URL (HTTPS)
@@ -613,6 +637,19 @@
 							rows="5"
 							required>{form?.createDraft?.story ?? ''}</textarea
 						>
+					</label>
+					<label class="grid gap-2 text-sm font-medium">
+						Your city (optional)
+						<input
+							class="rounded-md border bg-background px-3 py-2 font-normal"
+							name="ownerCity"
+							maxlength="100"
+							placeholder="e.g. Virginia Beach"
+							value={form?.createDraft?.ownerCity ?? ''}
+						/>
+						<span class="text-xs font-normal text-muted-foreground">
+							Only your first name and city appear on public pages — never your street address.
+						</span>
 					</label>
 					<label class="grid gap-2 text-sm font-medium">
 						Campaign photo URL (optional, HTTPS)

@@ -310,10 +310,11 @@
 								>
 									{campaign.title}
 								</h3>
-								{#if campaign.petName}
-									<p class="text-xs text-muted-foreground">For {campaign.petName}</p>
-								{/if}
-
+								<p class="text-xs text-muted-foreground">
+									{campaign.petName ? `For ${campaign.petName} · ` : ''}By {campaign.ownerName}{campaign.ownerCity
+										? ` · ${campaign.ownerCity}`
+										: ''}
+								</p>
 								<div class="mt-auto space-y-1.5 pt-2">
 									<div class="flex items-baseline justify-between text-xs">
 										<span class="font-semibold text-accent">{campaign.percent}% funded</span>
