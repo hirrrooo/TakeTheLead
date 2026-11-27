@@ -153,3 +153,46 @@ export function shouldShowBusyNotice(message: {
 }): boolean {
 	return message.aiFallback ?? (message.aiUsed === false && Boolean(message.sources?.length));
 }
+
+const SOURCE_SUFFIX =
+	/\s+(?:charitable pet foundation|foundation|relief urgent care grant|urgent care grant|veterinary financing|payment plans|medical assistance program|emergency medical fund|clinic)$/i;
+
+function normalizeMatchText(s: string): string {
+	return s.toLowerCase().replace(/[‘’`]/g, "'").replace(/[—–]/g, '-').replace(/\s+/g, ' ').trim();
+}
+
+export function visibleSources<T extends { number: number; name: string }>(
+	reply: string,
+	sources?: T[]
+): T[] {
+	if (!sources?.length) return [];
+	const cited = new Set<number>();
+	for (const m of reply.matchAll(/\[([\d,\s]+)\]/g)) {
+		for (const n of m[1].split(',')) {
+			const num = Number(n.trim());
+			if (Number.isInteger(num) && num > 0) cited.add(num);
+		}
+	}
+	const normReply = normalizeMatchText(reply);
+	const matched = sources.filter((s) => {
+		if (cited.has(s.number)) return true;
+		const full = normalizeMatchText(s.name);
+		const base = full
+			.split(' - ')[0]
+			.replace(/,\s*(?:va\s+)?inc\.?$/i, '')
+			.trim();
+		const noThe = base.replace(/^the\s+/, '');
+		const variants = new Set<string>([full, full.replace(/^the\s+/, ''), base, noThe]);
+		const stem = noThe.replace(SOURCE_SUFFIX, '').trim();
+		if (stem && (stem.includes(' ') || stem === 'redrover' || stem === 'carecredit')) {
+			variants.add(stem);
+		}
+		for (const v of variants) {
+			if (v.length < 3) continue;
+			const escaped = v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			if (new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).test(normReply)) return true;
+		}
+		return false;
+	});
+	return matched.length ? matched : sources;
+}

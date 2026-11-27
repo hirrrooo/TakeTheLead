@@ -3,7 +3,7 @@
 	import { CircleAlert, ExternalLink, HandCoins, HeartPulse, SendHorizontal } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { parseChatBlocks, shouldShowBusyNotice, type InlineRun } from './format';
+	import { parseChatBlocks, shouldShowBusyNotice, visibleSources, type InlineRun } from './format';
 
 	type Question = { id: string; text: string; urgency: string };
 	type Source = {
@@ -221,6 +221,7 @@
 					<p class="whitespace-pre-wrap">{m.text}</p>
 				</div>
 			{:else}
+				{@const shownSources = visibleSources(m.text, m.sources)}
 				<div class="max-w-[90%] space-y-2">
 					{#if m.label}
 						<p
@@ -262,9 +263,9 @@
 							{/each}
 						{/if}
 					</div>
-					{#if m.sources?.length}
+					{#if shownSources.length}
 						<ul class="grid gap-2">
-							{#each m.sources as s (s.id)}
+							{#each shownSources as s (s.id)}
 								<li>
 									<a
 										href={s.url}

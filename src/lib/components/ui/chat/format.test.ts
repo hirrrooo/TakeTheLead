@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseChatBlocks, parseInlineRuns, shouldShowBusyNotice } from './format';
+import { parseChatBlocks, parseInlineRuns, shouldShowBusyNotice, visibleSources } from './format';
 
 describe('parseInlineRuns', () => {
 	it('parses bold and italic spans while preserving plain text', () => {
@@ -121,5 +121,50 @@ describe('shouldShowBusyNotice', () => {
 		expect(shouldShowBusyNotice({ aiUsed: false, sources: [{ id: '1' }] })).toBe(true);
 		expect(shouldShowBusyNotice({ aiUsed: true, sources: [{ id: '1' }] })).toBe(false);
 		expect(shouldShowBusyNotice({})).toBe(false);
+	});
+});
+
+describe('visibleSources', () => {
+	const sixSources = [
+		{ number: 1, id: '1', name: 'Frankie’s Friends Charitable Pet Foundation' },
+		{ number: 2, id: '2', name: 'The Onyx & Breezy Foundation' },
+		{ number: 3, id: '3', name: 'RedRover Relief Urgent Care Grant' },
+		{ number: 4, id: '4', name: 'Animal Resources of Tidewater — Medical Assistance Program' },
+		{ number: 5, id: '5', name: 'Paws In Need, VA Inc. — Emergency Medical Fund' },
+		{ number: 6, id: '6', name: 'The Mosby Foundation' }
+	];
+
+	it('limits cards to the sources cited in the reply', () => {
+		const reply = [
+			'1. **Frankie’s Friends Charitable Pet Foundation** – Specialty care. [1]',
+			'2. **Animal Resources of Tidewater – Medical Assistance Program** – Local help. [4]',
+			'3. **Paws In Need, VA Inc. – Emergency Medical Fund** – Emergency care. [5]'
+		].join('\n');
+
+		expect(visibleSources(reply, sixSources).map((s) => s.number)).toEqual([1, 4, 5]);
+	});
+
+	it('matches shortened organization names when [n] brackets are omitted', () => {
+		const reply =
+			'Look at **Animal Resources of Tidewater**, **Paws In Need**, and **RedRover** for urgent surgery.';
+		expect(visibleSources(reply, sixSources).map((s) => s.number)).toEqual([3, 4, 5]);
+	});
+
+	it('does not falsely match unrelated words or partial org names', () => {
+		const sources = [
+			{ number: 1, id: 'w', name: 'Waggle' },
+			{ number: 2, id: 'p', name: 'The Pet Fund' },
+			{ number: 3, id: 'r', name: 'RedRover Relief Urgent Care Grant' }
+		];
+		const reply =
+			"I don't have “Golden Pet Rescue Fund” in our directory; the dog waggled its tail. Try [3].";
+		expect(visibleSources(reply, sources).map((s) => s.number)).toEqual([3]);
+	});
+
+	it('falls back to all sources when the reply mentions none by number or name', () => {
+		const reply = 'Please review the verified programs below and check each site for rules.';
+		expect(visibleSources(reply, sixSources).map((s) => s.number)).toEqual([1, 2, 3, 4, 5, 6]);
+		expect(visibleSources(reply, undefined)).toEqual([]);
+		expect(visibleSources(reply, [])).toEqual([]);
 	});
 });
